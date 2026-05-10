@@ -1245,6 +1245,10 @@ input {
   padding-right: 2px;
 }
 
+.report-scroll.player-report-idle {
+  opacity: 0.56;
+}
+
 .player-headline {
   margin-bottom: 8px;
 }

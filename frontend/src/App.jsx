@@ -2989,6 +2989,7 @@ export default function App() {
   const skillBreakdownViewEnabled = activeCenterView === "skill_breakdown";
   const threePtBreakdownViewEnabled = activeCenterView === "three_pt_breakdown";
   const playerComparisonViewEnabled = activeCenterView === "player_comparison";
+  const playerReportIdleVisible = activeCenterView === "plot" && !selectedPoint && !selectedCareerMissingSeason;
   const nonScatterViewEnabled = clusterDescriptionViewEnabled || careerPathViewEnabled || similarPlayersViewEnabled || skillBreakdownViewEnabled || threePtBreakdownViewEnabled || playerComparisonViewEnabled;
   const currentAlgorithm = "kmeans";
   const isFuzzyMode = false;
@@ -5982,9 +5983,9 @@ export default function App() {
   };
 
   const renderGalaxyPlayerProfileOverlay = () => {
-    if (!galaxyFullscreenPlotActive || !selectedPoint || selectedCareerMissingSeason) return null;
+    if (!galaxyFullscreenPlotActive || selectedCareerMissingSeason) return null;
 
-    if (galaxyPlayerProfileHidden) {
+    if (selectedPoint && galaxyPlayerProfileHidden) {
       return (
         <button
           type="button"
@@ -6010,22 +6011,30 @@ export default function App() {
       >
         <div className="galaxy-profile-topline">
           <div className="section-header">// PLAYER_REPORT</div>
-          <button
-            type="button"
-            className="galaxy-profile-hide-btn"
-            onClick={() => {
-              setGalaxyPlayerProfileHidden(true);
-              setGalaxyBestWorstOpen(false);
-              setShowAllFeatures(false);
-            }}
-          >
-            HIDE PLAYER PROFILE
-          </button>
+          {selectedPoint && (
+            <button
+              type="button"
+              className="galaxy-profile-hide-btn"
+              onClick={() => {
+                setGalaxyPlayerProfileHidden(true);
+                setGalaxyBestWorstOpen(false);
+                setShowAllFeatures(false);
+              }}
+            >
+              HIDE PLAYER PROFILE
+            </button>
+          )}
         </div>
 
-        {renderSelectedPlayerProfileHeader({ compact: true })}
+        {!selectedPoint && (
+          <div className="empty-state">
+            Click any player point to view player report.
+          </div>
+        )}
 
-        {!isFuzzyMode && (
+        {selectedPoint && renderSelectedPlayerProfileHeader({ compact: true })}
+
+        {selectedPoint && !isFuzzyMode && (
           <div className="player-report-action-row-secondary galaxy-best-worst-toggle-row">
             <button
               type="button"
@@ -6041,7 +6050,7 @@ export default function App() {
           </div>
         )}
 
-        {galaxyBestWorstOpen && renderGalaxyBestWorstPanel()}
+        {selectedPoint && galaxyBestWorstOpen && renderGalaxyBestWorstPanel()}
       </aside>
     );
   };
@@ -6812,7 +6821,7 @@ export default function App() {
         </div>
 
         <aside className={`right-panel neon-panel ${rightPanelWidth <= COLLAPSED_PANEL_THRESHOLD && !(galaxyFullscreenEnabled && galaxyPlotEnabled) ? "collapsed-panel" : ""} ${clusterDescriptionViewEnabled ? "cluster-report-panel" : ""} ${careerPathViewEnabled ? "career-report-panel" : ""} ${skillBreakdownViewEnabled || threePtBreakdownViewEnabled ? "skill-breakdown-panel" : ""}`} style={clusterDescriptionViewEnabled ? { "--cluster-color": getClusterColor(highlightedCluster ?? 1) } : undefined}>
-          <div className="report-scroll">
+          <div className={`report-scroll ${playerReportIdleVisible ? "player-report-idle" : ""}`}>
             <div className="section-header">{clusterDescriptionViewEnabled ? "// CLUSTER_REPORT" : "// PLAYER_REPORT"}</div>
 
             {clusterDescriptionViewEnabled ? (
@@ -6914,7 +6923,7 @@ export default function App() {
 
                 {!selectedPoint && !selectedCareerMissingSeason && (
                   <div className="empty-state">
-                    Click a point in the 3D galaxy to open the stats drawer.
+                    Click any player point to view player report.
                   </div>
                 )}
 
