@@ -769,6 +769,8 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "https://nbagalaxy.vercel.app",
+        "https://nbagalaxy.com",
+        "https://www.nbagalaxy.com",
         "https://nbagalaxy-git-main-harshaanand9s-projects.vercel.app",
         "https://nbagalaxy-fskfdlub4-harshaanand9s-projects.vercel.app",
     ],
