@@ -5611,21 +5611,21 @@ input {
 /* Universe explanation page */
 .universe-info-floating-btn {
   position: absolute;
-  right: 32px;
-  bottom: 32px;
+  right: 21px;
+  bottom: 21px;
   z-index: 35;
   appearance: none;
-  min-height: 61px;
-  padding: 14px 23px;
+  min-height: 40px;
+  padding: 9px 15px;
   border: 1px solid rgba(0, 212, 224, 0.22);
   border-radius: 999px;
   background: rgba(2, 10, 13, 0.46);
   color: rgba(223, 243, 244, 0.86);
   backdrop-filter: blur(12px);
-  opacity: 1;
+  opacity: 0.75;
   cursor: pointer;
   font: inherit;
-  font-size: 18px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -5634,7 +5634,7 @@ input {
 }
 
 .universe-info-floating-btn:hover {
-  opacity: 1;
+  opacity: 0.75;
   border-color: rgba(0, 212, 224, 0.64);
   background: rgba(2, 18, 21, 0.78);
   box-shadow: 0 0 24px rgba(0, 212, 224, 0.18);
@@ -5989,8 +5989,8 @@ input {
 
 @media (max-width: 760px) {
   .universe-info-floating-btn {
-    right: 18px;
-    bottom: 18px;
+    right: 12px;
+    bottom: 12px;
     max-width: calc(100vw - 24px);
   }
 
