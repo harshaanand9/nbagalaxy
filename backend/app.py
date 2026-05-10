@@ -765,7 +765,14 @@ app = FastAPI(title="NBA Guard Cluster Explorer API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://nbagalaxy.vercel.app",
+        "https://nbagalaxy-git-main-harshaanand9s-projects.vercel.app",
+        "https://nbagalaxy-fskfdlub4-harshaanand9s-projects.vercel.app",
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
