@@ -1114,7 +1114,15 @@ function ClusterFeatureStatCard({ item, summaryStatMode, valueMode }) {
   );
 }
 
-function ClusterDescriptionView({ report, clusterColor, onBack }) {
+function ClusterDescriptionView({ report, clusterColor, onBack, loading, error }) {
+  if (loading) {
+    return <div className='cluster-description-empty-state cluster-description-loading-state'>HEAT_MAP_LOADING...</div>;
+  }
+
+  if (error) {
+    return <div className='cluster-description-empty-state cluster-description-error-state'>{error}</div>;
+  }
+
   if (!report) {
     return <div className='cluster-description-empty-state'>SELECT_A_CLUSTER_TO_VIEW_A_CLUSTER_DESCRIPTION.</div>;
   }
@@ -2934,6 +2942,7 @@ export default function App() {
   const [clusterSummaryStatMode, setClusterSummaryStatMode] = useState("median");
   const [clusterSummaryValueMode, setClusterSummaryValueMode] = useState("percentile");
   const [viewTransitionActive, setViewTransitionActive] = useState(false);
+  const [startupLoaderVisible, setStartupLoaderVisible] = useState(true);
   const [glossarySectionsOpen, setGlossarySectionsOpen] = useState(() =>
     Object.fromEntries(GLOSSARY_SECTIONS.map((section) => [section.key, true]))
   );
@@ -2971,6 +2980,8 @@ export default function App() {
   const glossaryCleanupTimerRef = useRef(null);
   const viewSwapTimerRef = useRef(null);
   const viewTransitionTimerRef = useRef(null);
+  const clusterReportCacheRef = useRef(new Map());
+  const clusterReportRequestIdRef = useRef(0);
 
   const clusterDescriptionViewEnabled = activeCenterView === "cluster_description";
   const careerPathViewEnabled = activeCenterView === "career_path";
@@ -3013,6 +3024,29 @@ export default function App() {
     () => getDefaultPlotAxisRange(clusterData?.points ?? []),
     [clusterData]
   );
+  const clusterReportRequestPayload = useMemo(() => {
+    if (!clusterData || highlightedCluster == null) return null;
+    return {
+      algorithm: clusterData.algorithm,
+      distance_metric: clusterData.distance_metric,
+      k: clusterData.k,
+      features: clusterData.selected_features,
+      cluster_number: highlightedCluster,
+    };
+  }, [clusterData, highlightedCluster]);
+  const clusterReportRequestKey = useMemo(() => {
+    if (!clusterReportRequestPayload) return null;
+    const featuresKey = Array.isArray(clusterReportRequestPayload.features)
+      ? clusterReportRequestPayload.features.join(",")
+      : "";
+    return [
+      clusterReportRequestPayload.algorithm,
+      clusterReportRequestPayload.distance_metric,
+      clusterReportRequestPayload.k,
+      featuresKey,
+      clusterReportRequestPayload.cluster_number,
+    ].join("|");
+  }, [clusterReportRequestPayload]);
 
   const stopPanelResize = () => {
     resizeStateRef.current = null;
@@ -3928,7 +3962,7 @@ export default function App() {
   }, [selectedPoint?.player_key]);
 
   useEffect(() => {
-    if (!clusterDescriptionViewEnabled || !clusterData || highlightedCluster == null) {
+    if (!clusterReportRequestPayload || !clusterReportRequestKey) {
       setSelectedClusterReport(null);
       setLoadingClusterReport(false);
       setClusterReportError("");
@@ -3938,38 +3972,44 @@ export default function App() {
       return;
     }
 
+    const cachedReport = clusterReportCacheRef.current.get(clusterReportRequestKey);
+    if (cachedReport) {
+      setSelectedClusterReport(cachedReport);
+      setLoadingClusterReport(false);
+      setClusterReportError("");
+      return;
+    }
+
     let cancelled = false;
-    setLoadingClusterReport(true);
+    const requestId = clusterReportRequestIdRef.current + 1;
+    clusterReportRequestIdRef.current = requestId;
+    setSelectedClusterReport(null);
+    setLoadingClusterReport(clusterDescriptionViewEnabled);
     setClusterReportError("");
 
     fetch(`${API_BASE}/api/cluster-report`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        algorithm: clusterData.algorithm,
-        distance_metric: clusterData.distance_metric,
-        k: clusterData.k,
-        features: clusterData.selected_features,
-        cluster_number: highlightedCluster,
-      }),
+      body: JSON.stringify(clusterReportRequestPayload),
     })
       .then(async (response) => {
         const data = await response.json();
         if (!response.ok) {
           throw new Error(data.detail || 'Cluster report request failed.');
         }
-        if (!cancelled) {
+        if (!cancelled && clusterReportRequestIdRef.current === requestId) {
+          clusterReportCacheRef.current.set(clusterReportRequestKey, data);
           setSelectedClusterReport(data);
         }
       })
       .catch((err) => {
-        if (!cancelled) {
+        if (!cancelled && clusterReportRequestIdRef.current === requestId) {
           setSelectedClusterReport(null);
           setClusterReportError(String(err));
         }
       })
       .finally(() => {
-        if (!cancelled) {
+        if (!cancelled && clusterReportRequestIdRef.current === requestId) {
           setLoadingClusterReport(false);
         }
       });
@@ -3977,7 +4017,14 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [clusterDescriptionViewEnabled, clusterData, highlightedCluster]);
+  }, [clusterDescriptionViewEnabled, clusterReportRequestPayload, clusterReportRequestKey]);
+
+  useEffect(() => {
+    if (!startupLoaderVisible) return;
+    if (config && !loadingClusters && (clusterData || error)) {
+      setStartupLoaderVisible(false);
+    }
+  }, [startupLoaderVisible, config, loadingClusters, clusterData, error]);
 
   useEffect(() => {
     if (!similarPlayersViewEnabled || !similarPlayersSourcePoint) {
@@ -4422,15 +4469,17 @@ export default function App() {
     }
   };
 
-  const transitionToCenterView = (nextView) => {
+  const transitionToCenterView = (nextView, options = {}) => {
+    const immediate = Boolean(options?.immediate);
     if (viewTransitionActive || activeCenterView === nextView) return;
 
     clearViewTransitionTimers();
     setViewTransitionActive(true);
 
+    const swapDelayMs = immediate ? 0 : VIEW_GLITCH_SWAP_MS;
     viewSwapTimerRef.current = window.setTimeout(() => {
       setActiveCenterView(nextView);
-    }, VIEW_GLITCH_SWAP_MS);
+    }, swapDelayMs);
 
     viewTransitionTimerRef.current = window.setTimeout(() => {
       setViewTransitionActive(false);
@@ -4439,7 +4488,10 @@ export default function App() {
 
   const handleOpenClusterDescription = () => {
     if (highlightedCluster == null) return;
-    transitionToCenterView("cluster_description");
+    if (!selectedClusterReport) {
+      setLoadingClusterReport(true);
+    }
+    transitionToCenterView("cluster_description", { immediate: true });
   };
 
   const handleOpenCareerPath = () => {
@@ -6034,6 +6086,11 @@ export default function App() {
   return (
     <div className="app-shell">
       <div className="grid-bg" />
+      {startupLoaderVisible && (
+        <div className="startup-loading-screen" aria-live="polite" role="status">
+          <div className="startup-loading-card neon-panel">Galaxy Loading...</div>
+        </div>
+      )}
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">◎</span>
@@ -6376,6 +6433,8 @@ export default function App() {
                   report={selectedClusterReport}
                   clusterColor={getClusterColor(highlightedCluster ?? 1)}
                   onBack={handleBackToGalaxy}
+                  loading={loadingClusterReport}
+                  error={clusterReportError}
                 />
               ) : playerComparisonViewEnabled ? (
                 <PlayerComparisonView

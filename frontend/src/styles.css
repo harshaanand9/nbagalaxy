@@ -53,6 +53,29 @@ input {
     linear-gradient(180deg, #040a0d 0%, #02090b 100%);
 }
 
+.startup-loading-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 22% 24%, rgba(0, 212, 224, 0.14), transparent 34%),
+    radial-gradient(circle at 78% 72%, rgba(183, 122, 254, 0.14), transparent 30%),
+    rgba(2, 9, 11, 0.92);
+  backdrop-filter: blur(2px);
+}
+
+.startup-loading-card {
+  padding: 18px 26px;
+  border: 1px solid var(--line);
+  color: var(--accent);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: clamp(12px, 1.22vw, 15px);
+  text-shadow: 0 0 14px rgba(0, 212, 224, 0.22);
+}
+
 .grid-bg {
   position: absolute;
   inset: 0;
@@ -1880,6 +1903,14 @@ input {
   letter-spacing: 0.08em;
   border: 1px solid rgba(0, 212, 224, 0.14);
   background: rgba(8, 19, 22, 0.84);
+}
+
+.cluster-description-loading-state {
+  color: var(--accent);
+}
+
+.cluster-description-error-state {
+  color: #ff8ba3;
 }
 
 .cluster-description-layout {
