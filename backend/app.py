@@ -3,7 +3,6 @@ import json
 import os
 import pickle
 import re
-import threading
 import unicodedata
 from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple
@@ -13,8 +12,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from sklearn.cluster import KMeans, kmeans_plusplus
-from sklearn.covariance import LedoitWolf
+from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 
 try:
@@ -32,15 +30,15 @@ except ImportError:
 
 
 APP_VERSION = "0.18.0"
+BACKEND_DIR = Path(__file__).resolve().parent
+BACKEND_DATA_DIR = BACKEND_DIR / "data"
 DEFAULT_DATASET_PATH = os.environ.get(
     "CLUSTER_DATASET_PATH",
-    "/Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_16_17_25_26.csv",
+    str(BACKEND_DATA_DIR / "fullseasonfeatures_16_17_25_26.csv"),
 )
 CACHE_DIR = Path(os.environ.get("CLUSTER_CACHE_DIR", "./cache"))
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-BACKEND_DIR = Path(__file__).resolve().parent
-BACKEND_DATA_DIR = BACKEND_DIR / "data"
 LOCAL_PRODUCTION_OUTPUT_DIR = Path(
     "/Users/harsha/Desktop/PickPocketProjectOfficial/kmeans_blocked_pca_euclidean_outputs_13_14_25_26"
 )
@@ -387,11 +385,11 @@ HEADSHOT_FALLBACK_URL = "/headshots/fallback.svg"
 
 PLAYER_COMPS_DATASET_PATH = os.environ.get(
     "PLAYER_COMPS_DATASET_PATH",
-    "/Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_player_comps_real.csv",
+    str(BACKEND_DATA_DIR / "fullseasonfeatures_player_comps_real.csv"),
 )
 PLAYER_COMPS_PACE_PATH = os.environ.get(
     "PLAYER_COMPS_PACE_PATH",
-    "/Users/harsha/Desktop/PickPocketProjectOfficial/league_average_pace_2016_17_to_2025_26.csv",
+    str(BACKEND_DATA_DIR / "league_average_pace_2016_17_to_2025_26.csv"),
 )
 PLAYER_COMPS_TARGET_PACE_MODE = os.environ.get("PLAYER_COMPS_TARGET_PACE_MODE", "latest")
 DLEBRON_FEATURE = "D-LEBRON"
@@ -653,83 +651,12 @@ DEFAULT_ALGORITHM = "kmeans"
 ALLOWED_DISTANCE_METRICS = ("euclidean",)
 DEFAULT_DISTANCE_METRIC = "euclidean"
 DEFAULT_KMEANS_K = 9
-DEFAULT_FUZZY_C = 5
 KMEANS_N_INIT = 50
 KMEANS_RANDOM_STATE = 42
 KMEANS_MAX_ITER = 300
 KMEANS_TOL = 1e-4
 PCA_EXPLAINED_VAR_TARGET = 0.87
-MAHALANOBIS_EPS = 1e-8
 COSINE_EPS = 1e-12
-FUZZY_FUZZINESS_M = 1.4
-FUZZY_MAX_ITER = 500
-FUZZY_TOL = 1e-6
-FUZZY_RANDOM_STATE = 42
-
-MAHALANOBIS_FUZZY_C = 5
-MAHALANOBIS_FUZZY_FUZZINESS_M = 1.10
-MAHALANOBIS_FUZZY_MAX_ITER = FUZZY_MAX_ITER
-MAHALANOBIS_FUZZY_TOL = FUZZY_TOL
-MAHALANOBIS_FUZZY_RANDOM_STATE = FUZZY_RANDOM_STATE
-
-
-MAHALANOBIS_LOCKED_EPS = 1e-12
-MAHALANOBIS_LOCKED_EXCLUDED_NAMES = {
-    "Ben Simmons",
-    "LeBron James",
-    "Scottie Barnes",
-    "Shaun Livingston",
-}
-MAHALANOBIS_LOCKED_GROUP_FEATURES = {
-    "scoring": [
-        "assisted_3FGM_frequency",
-        "pct_assisted_3FGM_catch_shoot",
-        "unassisted_three_frequency",
-        "pull_up_3P_accuracy",
-        "catch_shoot_3P_accuracy",
-        "assisted_2FGM_frequency",
-        "unassisted_two_frequency",
-        "drive_fga_frequency",
-        "drive_fta_frequency",
-        "drive_fg_pct",
-        "LongMidRangeFrequency",
-        "LongMidRangeAccuracy",
-        "shortMidRangeFrequency",
-        "ShortMidRangeAccuracy",
-        "non_isolation_frequency",
-        "Avg_drib_per_touch",
-        "Avg3ptShotDistance",
-        "pt_per_FGA",
-    ],
-    "playmaking": [
-        "potential_ast_only_tov_ratio",
-        "pass_tov_ratio",
-        "assist_frequency",
-        "pass_frequency",
-        "drive_fga_frequency",
-        "3Pt_Frequency",
-    ],
-    "defense": [
-        "Blocks_deflections_per_75",
-        "off_fouls_drawn_and_steals_per_75",
-        "opp_players_fg_pct_difference",
-        "contested_shot_frequency",
-        "Opp_players_fga_per_75_poss",
-        "assist_frequency",
-        "Fg3Pct",
-    ],
-}
-MAHALANOBIS_LOCKED_GROUP_WEIGHTS = {
-    "scoring": 0.3330,
-    "playmaking": 0.3330,
-    "defense": 0.3330,
-}
-MAHALANOBIS_LOCKED_GROUP_ORDER = ["scoring", "playmaking", "defense"]
-MAHALANOBIS_KMEANS_N_INIT = 25
-MAHALANOBIS_KMEANS_RANDOM_STATE = 45
-MAHALANOBIS_KMEANS_MAX_ITER = 1000
-MAHALANOBIS_SIZE_BAND_WIDTH = 40
-MAHALANOBIS_CLUSTER_TOLERANCE = 1e-8
 
 CLUSTER_NAME_BY_NUMBER = {
     1: "Pass-First, Perimeter Oriented Point",
@@ -810,13 +737,6 @@ def stable_player_key(row: pd.Series) -> str:
             str(row["position"]),
         ]
     )
-
-
-def get_locked_mahalanobis_feature_columns(raw: bool = False) -> List[str]:
-    feature_columns: List[str] = []
-    for group_name in MAHALANOBIS_LOCKED_GROUP_ORDER:
-        feature_columns.extend(MAHALANOBIS_LOCKED_GROUP_FEATURES[group_name])
-    return feature_columns if raw else ordered_unique(feature_columns)
 
 
 def get_locked_euclidean_kmeans_feature_columns(raw: bool = False) -> List[str]:
@@ -2296,8 +2216,6 @@ def build_cache_key(
     if is_locked_euclidean_kmeans_request(algorithm, distance_metric):
         k = EUCLIDEAN_KMEANS_LOCKED_K
         feature_key = ["__LOCKED_EUCLIDEAN_KMEANS_PRESET__"]
-    elif distance_metric == "mahalanobis":
-        feature_key = ["__LOCKED_MAHALANOBIS_PRESET__"]
 
     key_obj = {
         "version": APP_VERSION,
@@ -2311,28 +2229,7 @@ def build_cache_key(
         "kmeans_random_state": KMEANS_RANDOM_STATE,
         "kmeans_max_iter": KMEANS_MAX_ITER,
         "kmeans_tol": KMEANS_TOL,
-        "fuzzy_fuzziness_m": FUZZY_FUZZINESS_M,
-        "fuzzy_max_iter": FUZZY_MAX_ITER,
-        "fuzzy_tol": FUZZY_TOL,
-        "fuzzy_random_state": FUZZY_RANDOM_STATE,
-        "mahalanobis_fuzzy_c": MAHALANOBIS_FUZZY_C,
-        "mahalanobis_fuzzy_fuzziness_m": MAHALANOBIS_FUZZY_FUZZINESS_M,
-        "mahalanobis_fuzzy_max_iter": MAHALANOBIS_FUZZY_MAX_ITER,
-        "mahalanobis_fuzzy_tol": MAHALANOBIS_FUZZY_TOL,
-        "mahalanobis_fuzzy_random_state": MAHALANOBIS_FUZZY_RANDOM_STATE,
         "pca_target": PCA_EXPLAINED_VAR_TARGET,
-        "mahalanobis_eps": MAHALANOBIS_EPS,
-        "mahalanobis_locked_eps": MAHALANOBIS_LOCKED_EPS,
-        "mahalanobis_locked_group_features": MAHALANOBIS_LOCKED_GROUP_FEATURES,
-        "mahalanobis_locked_group_weights": MAHALANOBIS_LOCKED_GROUP_WEIGHTS,
-        "mahalanobis_locked_group_order": MAHALANOBIS_LOCKED_GROUP_ORDER,
-        "mahalanobis_locked_excluded_names": sorted(MAHALANOBIS_LOCKED_EXCLUDED_NAMES),
-        "mahalanobis_kmeans_n_init": MAHALANOBIS_KMEANS_N_INIT,
-        "mahalanobis_kmeans_random_state": MAHALANOBIS_KMEANS_RANDOM_STATE,
-        "mahalanobis_kmeans_max_iter": MAHALANOBIS_KMEANS_MAX_ITER,
-        "mahalanobis_size_band_width": MAHALANOBIS_SIZE_BAND_WIDTH,
-        "mahalanobis_cluster_tolerance": MAHALANOBIS_CLUSTER_TOLERANCE,
-        "mahalanobis_locked_feature_columns": get_locked_mahalanobis_feature_columns(raw=True),
         "euclidean_kmeans_locked_k": EUCLIDEAN_KMEANS_LOCKED_K,
         "euclidean_kmeans_locked_assignments_path": str(EUCLIDEAN_KMEANS_LOCKED_ASSIGNMENTS_PATH),
         "euclidean_kmeans_locked_group_features": EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES,
@@ -2412,301 +2309,6 @@ def prepare_metric_space(X_pca: np.ndarray, pca: PCA, distance_metric: str) -> t
     raise ValueError(f"Unsupported distance metric: {distance_metric}")
 
 
-def season_standardize_series(series: pd.Series) -> pd.Series:
-    numeric_series = pd.to_numeric(series, errors="coerce")
-    mean_value = numeric_series.mean()
-    std_value = numeric_series.std(ddof=0)
-    if pd.isna(std_value) or std_value < MAHALANOBIS_LOCKED_EPS:
-        return pd.Series(np.zeros(len(numeric_series), dtype=float), index=numeric_series.index)
-    return (numeric_series - mean_value) / std_value
-
-
-def whiten_group(z_matrix: np.ndarray) -> np.ndarray:
-    ledoit_wolf = LedoitWolf(store_precision=False, assume_centered=True)
-    ledoit_wolf.fit(z_matrix)
-    covariance_matrix = ledoit_wolf.covariance_
-
-    eigenvalues, eigenvectors = np.linalg.eigh(covariance_matrix)
-    eigenvalues = np.clip(eigenvalues, MAHALANOBIS_LOCKED_EPS, None)
-
-    inverse_sqrt_covariance_matrix = (
-        eigenvectors @ np.diag(1.0 / np.sqrt(eigenvalues)) @ eigenvectors.T
-    )
-    whitened_matrix = z_matrix @ inverse_sqrt_covariance_matrix
-    return whitened_matrix
-
-
-def print_identity_deviation_audit(
-    group_name: str,
-    group_feature_names: List[str],
-    whitened_matrix: np.ndarray,
-) -> None:
-    covariance_matrix = np.cov(whitened_matrix, rowvar=False, ddof=0)
-    identity_matrix = np.eye(covariance_matrix.shape[0], dtype=float)
-    deviation_matrix = covariance_matrix - identity_matrix
-
-    diagonal_entries = np.diag(covariance_matrix)
-    diagonal_deviations = np.abs(diagonal_entries - 1.0)
-    sorted_indices = np.argsort(-diagonal_deviations)
-
-    print(f"\n{group_name.upper()} block post-whitening covariance audit:")
-    print(f"Shape: {covariance_matrix.shape}")
-    print(f"Max abs deviation from identity: {np.max(np.abs(deviation_matrix)):.10f}")
-    print(f"Mean abs deviation from identity: {np.mean(np.abs(deviation_matrix)):.10f}")
-
-    off_diagonal_mask = ~np.eye(covariance_matrix.shape[0], dtype=bool)
-    if np.any(off_diagonal_mask):
-        max_abs_off_diagonal = np.max(np.abs(covariance_matrix[off_diagonal_mask]))
-        mean_abs_off_diagonal = np.mean(np.abs(covariance_matrix[off_diagonal_mask]))
-    else:
-        max_abs_off_diagonal = 0.0
-        mean_abs_off_diagonal = 0.0
-
-    print(f"Max abs off-diagonal entry: {max_abs_off_diagonal:.10f}")
-    print(f"Mean abs off-diagonal entry: {mean_abs_off_diagonal:.10f}")
-    print("Diagonal entries sorted by |diag - 1|:")
-
-    for feature_index in sorted_indices:
-        feature_name = group_feature_names[feature_index]
-        diagonal_value = diagonal_entries[feature_index]
-        deviation_from_one = diagonal_deviations[feature_index]
-        print(
-            f"  {feature_name}: diag={diagonal_value:.10f}, |diag-1|={deviation_from_one:.10f}"
-        )
-
-
-def build_locked_mahalanobis_space(guards: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, Dict]:
-    locked_guards = guards.loc[~guards["Player Name"].isin(MAHALANOBIS_LOCKED_EXCLUDED_NAMES)].copy()
-    locked_guards = locked_guards.reset_index(drop=True)
-
-    if locked_guards.empty:
-        raise ValueError("No guards remained after applying the locked Mahalanobis exclusions.")
-
-    raw_feature_columns = get_locked_mahalanobis_feature_columns(raw=True)
-    display_feature_columns = get_locked_mahalanobis_feature_columns(raw=False)
-
-    missing_columns = [column_name for column_name in display_feature_columns if column_name not in locked_guards.columns]
-    if missing_columns:
-        raise ValueError(
-            f"These required locked Mahalanobis columns are missing from fullseasonfeatures.csv: {missing_columns}"
-        )
-
-    numeric_unique_df = locked_guards[display_feature_columns].apply(pd.to_numeric, errors="coerce")
-    numeric_unique_df = numeric_unique_df.replace([np.inf, -np.inf], np.nan)
-
-    missing_value_counts = numeric_unique_df.isna().sum()
-    missing_value_counts = missing_value_counts[missing_value_counts > 0]
-    if not missing_value_counts.empty:
-        raise ValueError(
-            "These locked Mahalanobis feature columns contain missing values among guards: "
-            f"{missing_value_counts.to_dict()}"
-        )
-
-    standardized_unique_df = locked_guards[["Player Name", "Season", "position"]].copy()
-    for feature_name in display_feature_columns:
-        standardized_unique_df[feature_name] = (
-            numeric_unique_df.groupby(locked_guards["Season"], sort=False)[feature_name]
-            .transform(season_standardize_series)
-            .astype(float)
-        )
-
-    weighted_group_matrices = []
-    for group_name in MAHALANOBIS_LOCKED_GROUP_ORDER:
-        feature_list = MAHALANOBIS_LOCKED_GROUP_FEATURES[group_name]
-        z_matrix = standardized_unique_df.loc[:, feature_list].to_numpy(dtype=float)
-        whitened_matrix = whiten_group(z_matrix)
-
-        print_identity_deviation_audit(
-            group_name=group_name,
-            group_feature_names=feature_list,
-            whitened_matrix=whitened_matrix,
-        )
-
-        group_weight = MAHALANOBIS_LOCKED_GROUP_WEIGHTS[group_name]
-        weighted_group_matrices.append(whitened_matrix * np.sqrt(group_weight))
-
-    final_clustering_matrix = np.hstack(weighted_group_matrices)
-
-    metric_meta = {
-        "distance_metric": "mahalanobis",
-        "space_transform": "groupwise_ledoit_wolf_whitened",
-        "mahalanobis_locked_mode": True,
-        "mahalanobis_locked_eps": MAHALANOBIS_LOCKED_EPS,
-        "mahalanobis_locked_group_order": MAHALANOBIS_LOCKED_GROUP_ORDER,
-        "mahalanobis_locked_group_weights": MAHALANOBIS_LOCKED_GROUP_WEIGHTS,
-        "mahalanobis_locked_feature_count_raw": len(raw_feature_columns),
-        "mahalanobis_locked_feature_count_display": len(display_feature_columns),
-        "mahalanobis_locked_excluded_names": sorted(MAHALANOBIS_LOCKED_EXCLUDED_NAMES),
-        "mahalanobis_locked_features_raw": raw_feature_columns,
-        "mahalanobis_locked_features": display_feature_columns,
-    }
-    return locked_guards, final_clustering_matrix, metric_meta
-
-
-def get_size_band_bounds(
-    num_points: int,
-    num_clusters: int,
-    size_band_width: int,
-) -> tuple[int, int, float]:
-    if num_clusters > num_points:
-        raise ValueError("N_CLUSTERS cannot exceed the number of points.")
-
-    even_cluster_size = num_points / num_clusters
-    lower_cluster_size = max(1, int(np.floor(even_cluster_size - size_band_width)))
-    upper_cluster_size = max(lower_cluster_size, int(np.ceil(even_cluster_size + size_band_width)))
-
-    if lower_cluster_size * num_clusters > num_points:
-        raise ValueError(
-            "The lower size band is infeasible because "
-            "lower_cluster_size * num_clusters exceeds num_points."
-        )
-
-    if upper_cluster_size * num_clusters < num_points:
-        raise ValueError(
-            "The upper size band is infeasible because "
-            "upper_cluster_size * num_clusters is smaller than num_points."
-        )
-
-    return lower_cluster_size, upper_cluster_size, even_cluster_size
-
-
-def compute_cost_matrix(
-    points_matrix: np.ndarray,
-    centers_matrix: np.ndarray,
-) -> np.ndarray:
-    difference_tensor = points_matrix[:, None, :] - centers_matrix[None, :, :]
-    cost_matrix = np.sum(difference_tensor * difference_tensor, axis=2)
-    return cost_matrix
-
-
-def move_best_point(
-    cluster_labels: np.ndarray,
-    cluster_sizes: np.ndarray,
-    cost_matrix: np.ndarray,
-    source_cluster_indices: np.ndarray,
-    destination_cluster_indices: np.ndarray,
-    minimum_source_size_after_move: int,
-    maximum_destination_size_after_move: int,
-) -> bool:
-    best_point_index = None
-    best_source_cluster_index = None
-    best_destination_cluster_index = None
-    best_delta_cost = None
-
-    for source_cluster_index in source_cluster_indices:
-        source_point_indices = np.where(cluster_labels == source_cluster_index)[0]
-        if source_point_indices.size == 0:
-            continue
-
-        for point_index in source_point_indices:
-            current_cluster_index = cluster_labels[point_index]
-            current_cost = cost_matrix[point_index, current_cluster_index]
-
-            if cluster_sizes[source_cluster_index] - 1 < minimum_source_size_after_move:
-                continue
-
-            for destination_cluster_index in destination_cluster_indices:
-                if destination_cluster_index == current_cluster_index:
-                    continue
-
-                if cluster_sizes[destination_cluster_index] + 1 > maximum_destination_size_after_move:
-                    continue
-
-                proposed_cost = cost_matrix[point_index, destination_cluster_index]
-                delta_cost = proposed_cost - current_cost
-
-                if best_delta_cost is None or delta_cost < best_delta_cost:
-                    best_point_index = point_index
-                    best_source_cluster_index = source_cluster_index
-                    best_destination_cluster_index = destination_cluster_index
-                    best_delta_cost = delta_cost
-
-    if best_point_index is None:
-        return False
-
-    cluster_labels[best_point_index] = best_destination_cluster_index
-    cluster_sizes[best_source_cluster_index] -= 1
-    cluster_sizes[best_destination_cluster_index] += 1
-    return True
-
-
-def assign_points_with_size_band(
-    points_matrix: np.ndarray,
-    centers_matrix: np.ndarray,
-    lower_cluster_size: int,
-    upper_cluster_size: int,
-) -> tuple[np.ndarray, float]:
-    num_clusters = centers_matrix.shape[0]
-    cost_matrix = compute_cost_matrix(points_matrix=points_matrix, centers_matrix=centers_matrix)
-
-    cluster_labels = np.argmin(cost_matrix, axis=1)
-    cluster_sizes = np.bincount(cluster_labels, minlength=num_clusters).astype(int)
-
-    while True:
-        underfull_cluster_indices = np.where(cluster_sizes < lower_cluster_size)[0]
-        donor_cluster_indices = np.where(cluster_sizes > lower_cluster_size)[0]
-
-        if underfull_cluster_indices.size == 0:
-            break
-
-        if donor_cluster_indices.size == 0:
-            raise RuntimeError(
-                "No donor clusters are available to repair underfull clusters."
-            )
-
-        move_was_made = move_best_point(
-            cluster_labels=cluster_labels,
-            cluster_sizes=cluster_sizes,
-            cost_matrix=cost_matrix,
-            source_cluster_indices=donor_cluster_indices,
-            destination_cluster_indices=underfull_cluster_indices,
-            minimum_source_size_after_move=lower_cluster_size,
-            maximum_destination_size_after_move=upper_cluster_size,
-        )
-
-        if not move_was_made:
-            raise RuntimeError(
-                "Failed to repair underfull clusters within the requested size band."
-            )
-
-    while True:
-        overfull_cluster_indices = np.where(cluster_sizes > upper_cluster_size)[0]
-        recipient_cluster_indices = np.where(cluster_sizes < upper_cluster_size)[0]
-
-        if overfull_cluster_indices.size == 0:
-            break
-
-        if recipient_cluster_indices.size == 0:
-            raise RuntimeError(
-                "No recipient clusters are available to repair overfull clusters."
-            )
-
-        move_was_made = move_best_point(
-            cluster_labels=cluster_labels,
-            cluster_sizes=cluster_sizes,
-            cost_matrix=cost_matrix,
-            source_cluster_indices=overfull_cluster_indices,
-            destination_cluster_indices=recipient_cluster_indices,
-            minimum_source_size_after_move=lower_cluster_size,
-            maximum_destination_size_after_move=upper_cluster_size,
-        )
-
-        if not move_was_made:
-            raise RuntimeError(
-                "Failed to repair overfull clusters within the requested size band."
-            )
-
-    final_underfull_cluster_indices = np.where(cluster_sizes < lower_cluster_size)[0]
-    final_overfull_cluster_indices = np.where(cluster_sizes > upper_cluster_size)[0]
-
-    if final_underfull_cluster_indices.size > 0 or final_overfull_cluster_indices.size > 0:
-        raise RuntimeError("Final cluster assignment still violates the requested size band.")
-
-    point_indices = np.arange(points_matrix.shape[0], dtype=int)
-    total_cost = float(cost_matrix[point_indices, cluster_labels].sum())
-    return cluster_labels, total_cost
-
-
 def recompute_centers(
     points_matrix: np.ndarray,
     cluster_labels: np.ndarray,
@@ -2724,121 +2326,6 @@ def recompute_centers(
     return centers_matrix
 
 
-def run_single_size_band_kmeans(
-    points_matrix: np.ndarray,
-    num_clusters: int,
-    max_iter: int,
-    tolerance: float,
-    init_seed: int,
-    size_band_width: int,
-) -> tuple[np.ndarray, np.ndarray, float, int]:
-    lower_cluster_size, upper_cluster_size, _ = get_size_band_bounds(
-        num_points=points_matrix.shape[0],
-        num_clusters=num_clusters,
-        size_band_width=size_band_width,
-    )
-
-    centers_matrix, _ = kmeans_plusplus(
-        X=points_matrix,
-        n_clusters=num_clusters,
-        random_state=init_seed,
-    )
-    centers_matrix = centers_matrix.copy()
-    previous_cluster_labels = None
-    previous_total_cost = None
-
-    for iteration_number in range(1, max_iter + 1):
-        cluster_labels, total_cost = assign_points_with_size_band(
-            points_matrix=points_matrix,
-            centers_matrix=centers_matrix,
-            lower_cluster_size=lower_cluster_size,
-            upper_cluster_size=upper_cluster_size,
-        )
-
-        updated_centers_matrix = recompute_centers(
-            points_matrix=points_matrix,
-            cluster_labels=cluster_labels,
-            num_clusters=num_clusters,
-        )
-
-        center_shift = float(np.linalg.norm(updated_centers_matrix - centers_matrix))
-
-        if previous_cluster_labels is not None:
-            labels_unchanged = np.array_equal(cluster_labels, previous_cluster_labels)
-        else:
-            labels_unchanged = False
-
-        if previous_total_cost is not None:
-            cost_change = abs(previous_total_cost - total_cost)
-        else:
-            cost_change = np.inf
-
-        centers_matrix = updated_centers_matrix
-
-        if labels_unchanged or (center_shift <= tolerance and cost_change <= tolerance):
-            return cluster_labels, centers_matrix, total_cost, iteration_number
-
-        previous_cluster_labels = cluster_labels.copy()
-        previous_total_cost = total_cost
-
-    final_cluster_labels, final_total_cost = assign_points_with_size_band(
-        points_matrix=points_matrix,
-        centers_matrix=centers_matrix,
-        lower_cluster_size=lower_cluster_size,
-        upper_cluster_size=upper_cluster_size,
-    )
-    final_centers_matrix = recompute_centers(
-        points_matrix=points_matrix,
-        cluster_labels=final_cluster_labels,
-        num_clusters=num_clusters,
-    )
-
-    return final_cluster_labels, final_centers_matrix, final_total_cost, max_iter
-
-
-def size_band_kmeans(
-    points_matrix: np.ndarray,
-    num_clusters: int,
-    n_init: int,
-    max_iter: int,
-    tolerance: float,
-    random_state: int,
-    size_band_width: int,
-) -> tuple[np.ndarray, np.ndarray, float, int]:
-    random_number_generator = np.random.RandomState(random_state)
-    init_seed_values = random_number_generator.randint(
-        low=0,
-        high=2**31 - 1,
-        size=n_init,
-    )
-
-    best_cluster_labels = None
-    best_centers_matrix = None
-    best_total_cost = np.inf
-    best_iteration_count = 0
-
-    for init_seed_value in init_seed_values:
-        cluster_labels, centers_matrix, total_cost, iteration_count = run_single_size_band_kmeans(
-            points_matrix=points_matrix,
-            num_clusters=num_clusters,
-            max_iter=max_iter,
-            tolerance=tolerance,
-            init_seed=int(init_seed_value),
-            size_band_width=size_band_width,
-        )
-
-        if total_cost < best_total_cost:
-            best_cluster_labels = cluster_labels.copy()
-            best_centers_matrix = centers_matrix.copy()
-            best_total_cost = float(total_cost)
-            best_iteration_count = int(iteration_count)
-
-    if best_cluster_labels is None or best_centers_matrix is None:
-        raise RuntimeError("Size-band KMeans failed to produce a solution.")
-
-    return best_cluster_labels, best_centers_matrix, best_total_cost, best_iteration_count
-
-
 def get_cluster_medoid_local_index(cluster_points_matrix: np.ndarray) -> int:
     pairwise_difference_tensor = (
         cluster_points_matrix[:, None, :] - cluster_points_matrix[None, :, :]
@@ -2847,106 +2334,6 @@ def get_cluster_medoid_local_index(cluster_points_matrix: np.ndarray) -> int:
     summed_distance_vector = pairwise_distance_matrix_local.sum(axis=1)
     medoid_local_index = int(np.argmin(summed_distance_vector))
     return medoid_local_index
-
-
-def get_top_outlier_local_indices(
-    cluster_points_matrix: np.ndarray,
-    cluster_center_vector: np.ndarray,
-    num_outliers: int = 3,
-) -> tuple[np.ndarray, np.ndarray]:
-    center_difference_matrix = cluster_points_matrix - cluster_center_vector
-    distance_to_center_vector = np.linalg.norm(center_difference_matrix, axis=1)
-
-    num_outliers_to_return = min(num_outliers, cluster_points_matrix.shape[0])
-    outlier_local_indices = np.argsort(-distance_to_center_vector)[:num_outliers_to_return]
-    outlier_distances = distance_to_center_vector[outlier_local_indices]
-    return outlier_local_indices, outlier_distances
-
-
-
-def fuzzy_c_means(
-    X: np.ndarray,
-    n_clusters: int,
-    m: float,
-    max_iter: int,
-    tol: float,
-    random_state: int,
-):
-    rng = np.random.default_rng(random_state)
-    n_samples = X.shape[0]
-
-    memberships = rng.random((n_samples, n_clusters))
-    memberships = memberships / memberships.sum(axis=1, keepdims=True)
-
-    iteration_count = 0
-    for iteration in range(max_iter):
-        old_memberships = memberships.copy()
-        membership_weights = memberships ** m
-        centers = (membership_weights.T @ X) / np.maximum(membership_weights.sum(axis=0)[:, None], 1e-12)
-
-        distances = np.linalg.norm(X[:, None, :] - centers[None, :, :], axis=2)
-        zero_mask = distances <= 1e-12
-        distances = np.fmax(distances, 1e-12)
-        power = 2.0 / (m - 1.0)
-        ratio = (distances[:, :, None] / distances[:, None, :]) ** power
-        memberships = 1.0 / ratio.sum(axis=2)
-
-        if zero_mask.any():
-            for row_idx in np.where(zero_mask.any(axis=1))[0]:
-                exact_clusters = np.where(zero_mask[row_idx])[0]
-                memberships[row_idx] = 0.0
-                memberships[row_idx, exact_clusters] = 1.0 / len(exact_clusters)
-
-        iteration_count = iteration + 1
-        if np.abs(memberships - old_memberships).max() < tol:
-            break
-
-    labels = memberships.argmax(axis=1)
-    return centers, memberships, labels, iteration_count
-
-
-def fuzzy_c_means_cosine(
-    X: np.ndarray,
-    n_clusters: int,
-    m: float,
-    max_iter: int,
-    tol: float,
-    random_state: int,
-):
-    rng = np.random.default_rng(random_state)
-    n_samples = X.shape[0]
-
-    memberships = rng.random((n_samples, n_clusters))
-    memberships = memberships / memberships.sum(axis=1, keepdims=True)
-
-    iteration_count = 0
-    for iteration in range(max_iter):
-        old_memberships = memberships.copy()
-        membership_weights = memberships ** m
-        raw_centers = (membership_weights.T @ X) / np.maximum(membership_weights.sum(axis=0)[:, None], COSINE_EPS)
-        centers = normalize_rows(raw_centers, eps=COSINE_EPS)
-
-        similarities = np.clip(X @ centers.T, -1.0, 1.0)
-        raw_distances = 1.0 - similarities
-        zero_mask = raw_distances <= COSINE_EPS
-        distances = np.maximum(raw_distances, COSINE_EPS)
-
-        power = 2.0 / (m - 1.0)
-        ratio = (distances[:, :, None] / distances[:, None, :]) ** power
-        memberships = 1.0 / ratio.sum(axis=2)
-
-        if zero_mask.any():
-            for row_idx in np.where(zero_mask.any(axis=1))[0]:
-                exact_clusters = np.where(zero_mask[row_idx])[0]
-                memberships[row_idx] = 0.0
-                memberships[row_idx, exact_clusters] = 1.0 / len(exact_clusters)
-
-        iteration_count = iteration + 1
-        if np.abs(memberships - old_memberships).max() < tol:
-            break
-
-    labels = memberships.argmax(axis=1)
-    return centers, memberships, labels, iteration_count
 
 
 def spherical_kmeans_plus_plus_init(X: np.ndarray, n_clusters: int, rng: np.random.Generator) -> np.ndarray:
@@ -3644,24 +3031,15 @@ def prepare_cluster_runtime(
         k = EUCLIDEAN_KMEANS_LOCKED_K
         features = get_locked_euclidean_kmeans_feature_columns(raw=False)
 
-    if algorithm == "fuzzy_cmeans" and distance_metric == "mahalanobis" and int(k) != MAHALANOBIS_FUZZY_C:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Mahalanobis fuzzy C-means is locked to c={MAHALANOBIS_FUZZY_C}.",
-        )
-
     if is_locked_euclidean_kmeans:
         invalid_features = []
-    elif distance_metric == "mahalanobis":
-        locked_feature_pool = set(get_locked_mahalanobis_feature_columns(raw=False))
-        invalid_features = [f for f in features if f not in locked_feature_pool]
     else:
         invalid_features = [f for f in features if f not in ALLOWED_FEATURES]
 
     if invalid_features:
         raise HTTPException(status_code=400, detail=f"Invalid feature(s): {invalid_features}")
 
-    if not features and distance_metric != "mahalanobis" and not is_locked_euclidean_kmeans:
+    if not features and not is_locked_euclidean_kmeans:
         raise HTTPException(status_code=400, detail="At least one feature must be selected.")
 
     base_guards = dataset_meta["guards"].copy()
@@ -3675,20 +3053,6 @@ def prepare_cluster_runtime(
             raise HTTPException(status_code=400, detail=str(e))
 
         used_features_after_cleaning = metric_meta["euclidean_kmeans_locked_features"]
-        dropped_all_nan_features = []
-        dropped_zero_variance_features = []
-
-        plot_pca = PCA(n_components=min(2, X_metric.shape[1]))
-        X_plot = plot_pca.fit_transform(X_metric)
-        pca_variance_captured = float(np.asarray(plot_pca.explained_variance_ratio_, dtype=float).sum())
-        pca_components_used_for_clustering = int(X_metric.shape[1])
-    elif distance_metric == "mahalanobis":
-        try:
-            guards, X_metric, metric_meta = build_locked_mahalanobis_space(base_guards)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-
-        used_features_after_cleaning = metric_meta["mahalanobis_locked_features"]
         dropped_all_nan_features = []
         dropped_zero_variance_features = []
 
@@ -3769,27 +3133,6 @@ def prepare_cluster_runtime(
                 "kmeans_variant": "spherical_kmeans",
                 "kmeans_iterations_run": int(iteration_count),
             }
-        elif distance_metric == "mahalanobis":
-            raw_labels, cluster_centers, best_total_cost, iteration_count = size_band_kmeans(
-                points_matrix=X_metric,
-                num_clusters=k,
-                n_init=MAHALANOBIS_KMEANS_N_INIT,
-                max_iter=MAHALANOBIS_KMEANS_MAX_ITER,
-                tolerance=MAHALANOBIS_CLUSTER_TOLERANCE,
-                random_state=MAHALANOBIS_KMEANS_RANDOM_STATE,
-                size_band_width=MAHALANOBIS_SIZE_BAND_WIDTH,
-            )
-            memberships = np.eye(k, dtype=float)[raw_labels]
-            algorithm_meta = {
-                "kmeans_n_init": MAHALANOBIS_KMEANS_N_INIT,
-                "kmeans_random_state": MAHALANOBIS_KMEANS_RANDOM_STATE,
-                "kmeans_max_iter": MAHALANOBIS_KMEANS_MAX_ITER,
-                "kmeans_tol": MAHALANOBIS_CLUSTER_TOLERANCE,
-                "kmeans_variant": "size_band_kmeans",
-                "kmeans_iterations_run": int(iteration_count),
-                "size_band_width": MAHALANOBIS_SIZE_BAND_WIDTH,
-                "best_total_cost": float(best_total_cost),
-            }
         else:
             kmeans = KMeans(
                 n_clusters=k,
@@ -3809,62 +3152,6 @@ def prepare_cluster_runtime(
                 "kmeans_tol": KMEANS_TOL,
                 "kmeans_variant": "standard_kmeans",
             }
-    else:
-        if distance_metric == "cosine":
-            fuzzy_c = int(k)
-            fuzzy_m = FUZZY_FUZZINESS_M
-            fuzzy_max_iter = FUZZY_MAX_ITER
-            fuzzy_tol = FUZZY_TOL
-            fuzzy_random_state = FUZZY_RANDOM_STATE
-            cluster_centers, memberships, raw_labels, iteration_count = fuzzy_c_means_cosine(
-                X_metric,
-                n_clusters=fuzzy_c,
-                m=fuzzy_m,
-                max_iter=fuzzy_max_iter,
-                tol=fuzzy_tol,
-                random_state=fuzzy_random_state,
-            )
-            fuzzy_variant = "spherical_fuzzy_cmeans"
-        elif distance_metric == "mahalanobis":
-            fuzzy_c = MAHALANOBIS_FUZZY_C
-            fuzzy_m = MAHALANOBIS_FUZZY_FUZZINESS_M
-            fuzzy_max_iter = MAHALANOBIS_FUZZY_MAX_ITER
-            fuzzy_tol = MAHALANOBIS_FUZZY_TOL
-            fuzzy_random_state = MAHALANOBIS_FUZZY_RANDOM_STATE
-            cluster_centers, memberships, raw_labels, iteration_count = fuzzy_c_means(
-                X_metric,
-                n_clusters=fuzzy_c,
-                m=fuzzy_m,
-                max_iter=fuzzy_max_iter,
-                tol=fuzzy_tol,
-                random_state=fuzzy_random_state,
-            )
-            fuzzy_variant = "blocked_mahalanobis_fuzzy_cmeans"
-        else:
-            fuzzy_c = int(k)
-            fuzzy_m = FUZZY_FUZZINESS_M
-            fuzzy_max_iter = FUZZY_MAX_ITER
-            fuzzy_tol = FUZZY_TOL
-            fuzzy_random_state = FUZZY_RANDOM_STATE
-            cluster_centers, memberships, raw_labels, iteration_count = fuzzy_c_means(
-                X_metric,
-                n_clusters=fuzzy_c,
-                m=fuzzy_m,
-                max_iter=fuzzy_max_iter,
-                tol=fuzzy_tol,
-                random_state=fuzzy_random_state,
-            )
-            fuzzy_variant = "standard_fuzzy_cmeans"
-
-        algorithm_meta = {
-            "fuzzy_c": int(fuzzy_c),
-            "fuzzy_fuzziness_m": fuzzy_m,
-            "fuzzy_max_iter": fuzzy_max_iter,
-            "fuzzy_tol": fuzzy_tol,
-            "fuzzy_random_state": fuzzy_random_state,
-            "fuzzy_iterations_run": int(iteration_count),
-            "fuzzy_variant": fuzzy_variant,
-        }
 
     labels = raw_labels + 1
     guards = guards.reset_index(drop=True)
@@ -3999,7 +3286,6 @@ def compute_cluster_report_payload(
     guards = runtime["guards"].reset_index(drop=True)
     labels = runtime["labels"]
     X_metric = runtime["X_metric"]
-    cluster_centers = runtime["cluster_centers"]
     payload = runtime["payload"]
 
     if cluster_number < 1 or cluster_number > int(k):
@@ -4112,18 +3398,8 @@ def compute_cluster_report_payload(
     feature_summaries_sorted = sorted(feature_summaries, key=lambda item: item["robust_z"], reverse=True)
 
     typical_indices = np.argsort(member_distance_sums)[: min(3, member_points.shape[0])].tolist()
-    if distance_metric == "mahalanobis" and cluster_centers is not None:
-        cluster_center_vector = cluster_centers[int(cluster_number) - 1]
-        outlier_indices, outlier_distances = get_top_outlier_local_indices(
-            cluster_points_matrix=cluster_member_metric_matrix,
-            cluster_center_vector=cluster_center_vector,
-            num_outliers=3,
-        )
-        outlier_indices = outlier_indices.tolist()
-        outlier_distance_lookup = {int(idx): float(dist) for idx, dist in zip(outlier_indices, outlier_distances.tolist())}
-    else:
-        outlier_indices = np.argsort(member_distance_sums)[-min(3, member_points.shape[0]):][::-1].tolist()
-        outlier_distance_lookup = {int(idx): float(member_distance_sums[int(idx)]) for idx in outlier_indices}
+    outlier_indices = np.argsort(member_distance_sums)[-min(3, member_points.shape[0]):][::-1].tolist()
+    outlier_distance_lookup = {int(idx): float(member_distance_sums[int(idx)]) for idx in outlier_indices}
 
     medoid_local_index = int(typical_indices[0]) if typical_indices else None
 
@@ -4474,55 +3750,6 @@ def build_three_pt_breakdown_payload(dataset_path: str, algorithm: str, distance
         return precomputed_payload
 
     raise ValueError(f"No precomputed three_pt_breakdown payload found for player_key: {player_key}")
-
-def warm_default_mahalanobis_cache() -> None:
-    features = get_locked_mahalanobis_feature_columns(raw=False)
-    try:
-        compute_cluster_payload(
-            DEFAULT_DATASET_PATH,
-            "kmeans",
-            "mahalanobis",
-            DEFAULT_KMEANS_K,
-            features,
-        )
-        for cluster_number in range(1, DEFAULT_KMEANS_K + 1):
-            compute_cluster_report_payload(
-                DEFAULT_DATASET_PATH,
-                "kmeans",
-                "mahalanobis",
-                DEFAULT_KMEANS_K,
-                features,
-                cluster_number,
-            )
-        compute_cluster_payload(
-            DEFAULT_DATASET_PATH,
-            "fuzzy_cmeans",
-            "mahalanobis",
-            MAHALANOBIS_FUZZY_C,
-            features,
-        )
-        for cluster_number in range(1, MAHALANOBIS_FUZZY_C + 1):
-            compute_cluster_report_payload(
-                DEFAULT_DATASET_PATH,
-                "fuzzy_cmeans",
-                "mahalanobis",
-                MAHALANOBIS_FUZZY_C,
-                features,
-                cluster_number,
-            )
-        print(
-            f"[startup] Warmed default Mahalanobis caches for "
-            f"k={DEFAULT_KMEANS_K} and fuzzy c={MAHALANOBIS_FUZZY_C}."
-        )
-    except Exception as exc:
-        print(f"[startup] Failed to warm default Mahalanobis cache: {exc}")
-
-
-@app.on_event("startup")
-def startup_precache_default_mahalanobis() -> None:
-    threading.Thread(target=warm_default_mahalanobis_cache, daemon=True).start()
-
-
 
 def build_similar_players_response_from_galaxy(player_name: str, season: str) -> Dict[str, object]:
     runtime = prepare_cluster_runtime(
@@ -5459,18 +4686,13 @@ def get_config():
         "galaxy_cluster_knn_count": GALAXY_CLUSTER_KNN_COUNT,
         "euclidean_kmeans_cluster_name_by_number": EUCLIDEAN_KMEANS_CLUSTER_NAME_BY_NUMBER,
         "euclidean_kmeans_cluster_description_by_number": EUCLIDEAN_KMEANS_CLUSTER_DESCRIPTION_BY_NUMBER,
-        "mahalanobis_locked_features": get_locked_mahalanobis_feature_columns(raw=False),
-        "mahalanobis_locked_features_raw": get_locked_mahalanobis_feature_columns(raw=True),
         "cluster_name_by_number": CLUSTER_NAME_BY_NUMBER,
         "default_algorithm": DEFAULT_ALGORITHM,
         "allowed_distance_metrics": list(ALLOWED_DISTANCE_METRICS),
         "default_distance_metric": DEFAULT_DISTANCE_METRIC,
         "default_k": DEFAULT_KMEANS_K,
         "default_kmeans_k": DEFAULT_KMEANS_K,
-        "default_fuzzy_c": DEFAULT_FUZZY_C,
-        "default_mahalanobis_fuzzy_c": MAHALANOBIS_FUZZY_C,
-        "mahalanobis_fuzzy_m": MAHALANOBIS_FUZZY_FUZZINESS_M,
-        "allowed_algorithms": ["kmeans", "fuzzy_cmeans"],
+        "allowed_algorithms": ["kmeans"],
         "pca_explained_var_target": PCA_EXPLAINED_VAR_TARGET,
         "lower_is_better_percentile_features": sorted(LOWER_IS_BETTER_PERCENTILE_FEATURES),
         "skill_breakdown_group_order": SKILL_BREAKDOWN_GROUP_ORDER,
@@ -5568,8 +4790,7 @@ def player_three_pt_breakdown(req: PlayerSkillBreakdownRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.post("/api/player-details")
-def player_details(req: PlayerDetailRequest):
+def build_player_detail_payload(player_key: str) -> Dict[str, object]:
     try:
         dataset_meta = load_base_dataframe(DEFAULT_DATASET_PATH)
     except FileNotFoundError as e:
@@ -5577,11 +4798,11 @@ def player_details(req: PlayerDetailRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    details = dataset_meta["stats_lookup"].get(req.player_key)
+    details = dataset_meta["stats_lookup"].get(player_key)
     if details is None:
         raise HTTPException(status_code=404, detail="Player row not found.")
 
-    player_comps_items = build_player_comps_feature_percentile_items(req.player_key, details["meta"])
+    player_comps_items = build_player_comps_feature_percentile_items(player_key, details["meta"])
     percentile_items = sorted(
         player_comps_items if player_comps_items is not None else [
             {
@@ -5607,3 +4828,8 @@ def player_details(req: PlayerDetailRequest):
         "bottom_features": bottom_features,
         "badges": details.get("badges", []),
     }
+
+
+@app.post("/api/player-details")
+def player_details(req: PlayerDetailRequest):
+    return build_player_detail_payload(req.player_key)

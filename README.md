@@ -51,13 +51,12 @@ Clicking a player draws constellation lines to that player-season's four nearest
 
 ## Optional precompute step
 
-The backend can compute and cache the galaxy on first load, but you can precompute the assets first:
+The backend can compute and cache the galaxy on first load, but production should precompute the static assets first:
 
 ```bash
-cd /Users/harsha/Desktop/PickPocketProjectOfficial/cluster_site/scripts
-python3 precompute_galaxy_assets.py \
+python3 scripts/precompute_galaxy_assets.py \
   --dataset /Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_16_17_25_26.csv \
-  --output-dir ../backend/data
+  --output-dir backend/data
 ```
 
 This writes:
@@ -69,6 +68,16 @@ backend/data/archetype_edges.csv
 backend/data/cluster_medoids.csv
 backend/data/archetype_labels.json
 ```
+
+The first-load frontend bootstrap can also be materialized as a static file:
+
+```bash
+python3 scripts/precompute_default_bootstrap.py \
+  --dataset /Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_16_17_25_26.csv \
+  --dlebron-dataset /Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_player_comps_real.csv
+```
+
+That writes `frontend/public/precomputed/default_bootstrap.json`, which contains the default config, galaxy payload, player detail panels, and cluster reports.
 
 ## Backend setup
 
@@ -162,12 +171,12 @@ spin so the camera does not fight the user's cursor.
 When `fullseasonfeatures_16_17_25_26.csv` changes, refresh all precomputed site assets with one command from the project root:
 
 ```bash
-python3 scripts/precompute_all_site_assets.py \
-  --dataset /Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_16_17_25_26.csv \
-  --dlebron-dataset /Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_player_comps_real.csv
+python3 scripts/precompute_all_site_assets.py
 ```
 
-This runs the galaxy, badge, skill-breakdown, and 3PT-breakdown precomputes in sequence. The main dataset still drives the existing skill-breakdown and badge features; `D-LEBRON` is side-loaded only where needed from the player-comps CSV. You still need to rerun the precompute when the source CSV changes because the cluster labels, medoids, similar-player edges, badges, and percentile payloads are derived files. The difference is that you no longer need to remember several separate script calls manually.
+The defaults use the checked-in CSVs in `backend/data`. Pass `--dataset` and `--dlebron-dataset` only when refreshing from local source files outside the repo.
+
+This runs the galaxy, badge, skill-breakdown, 3PT-breakdown, and frontend bootstrap precomputes in sequence. The main dataset still drives the existing skill-breakdown and badge features; `D-LEBRON` is side-loaded only where needed from the player-comps CSV. You still need to rerun the precompute when the source CSV changes because the cluster labels, medoids, similar-player edges, badges, percentile payloads, player detail panels, and cluster reports are derived files. The difference is that you no longer need to remember several separate script calls manually.
 
 The new breakdown outputs are:
 
@@ -175,6 +184,7 @@ The new breakdown outputs are:
 backend/data/player_skill_breakdowns.json
 backend/data/player_three_pt_breakdowns.json
 backend/data/player_breakdown_manifest.json
+frontend/public/precomputed/default_bootstrap.json
 ```
 
 The backend checks those files first for `/api/player-skill-breakdown` and `/api/player-three-pt-breakdown`. If the manifest no longer matches the current dataset mtime or locked Euclidean feature signature, the backend falls back to the live calculation instead of serving stale values.

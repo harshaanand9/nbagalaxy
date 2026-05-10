@@ -14,8 +14,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
-DEFAULT_DATASET = "/Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_16_17_25_26.csv"
-DEFAULT_DLEBRON_DATASET = "/Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_player_comps_real.csv"
+DEFAULT_DATASET = str(PROJECT_ROOT / "backend" / "data" / "fullseasonfeatures_16_17_25_26.csv")
+DEFAULT_DLEBRON_DATASET = str(PROJECT_ROOT / "backend" / "data" / "fullseasonfeatures_player_comps_real.csv")
 
 
 def run_step(label: str, command: list[str]) -> None:
@@ -48,6 +48,8 @@ def main() -> None:
     if not args.skip_badge_assets:
         run_step("Bootstrap badge source images", [sys.executable, str(SCRIPTS_DIR / "bootstrap_badge_sources.py")])
         run_step("Build badge image assets", [sys.executable, str(SCRIPTS_DIR / "build_badge_assets.py")])
+
+    run_step("Precompute frontend bootstrap payload", [sys.executable, str(SCRIPTS_DIR / "precompute_default_bootstrap.py"), "--dataset", dataset, "--dlebron-dataset", dlebron_dataset])
 
     print("\nAll requested site assets are precomputed.")
 

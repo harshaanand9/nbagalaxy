@@ -5,8 +5,28 @@ import { BADGE_META, BADGE_TIER_LABELS } from "./badges";
 import "./styles.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const DEFAULT_BOOTSTRAP_URL = import.meta.env.VITE_DEFAULT_BOOTSTRAP_URL || "/precomputed/default_bootstrap.json";
 const SYNERGY_NOTE =
   "This stat uses Synergy defined offensive possessions instead of PBPStats derived offensive possessions.";
+
+function buildClusterRequestKey(payload) {
+  if (!payload) return "";
+  const featuresKey = Array.isArray(payload.features) ? payload.features.join(",") : "";
+  return [
+    payload.algorithm,
+    payload.distance_metric,
+    payload.k,
+    featuresKey,
+  ].join("|");
+}
+
+function buildClusterReportRequestKey(payload) {
+  if (!payload) return "";
+  return [
+    buildClusterRequestKey(payload),
+    payload.cluster_number,
+  ].join("|");
+}
 
 const CLUSTER_COLORS = [
   "#00D4E0",
@@ -1593,7 +1613,7 @@ function SimilarPlayersView({
                 onToggle={() => setBlockedEuclideanOpen((previousValue) => !previousValue)}
               >
                 <p>
-                  Due to the heavy usage of possession-level frequency features, I found Euclidean distance to perform the same/worse compared to other directional distance metrics such as Cosine and Mahalanobis.
+                  Due to the heavy usage of possession-level frequency features, I found Euclidean distance to perform worse unless the raw feature space is first normalized, clipped, and compressed into the locked PCA blocks used here.
                 </p>
                 <p className="similarity-blocked-part-copy">
                   The blocked part comes from the features being separated into blocks: Three-Point Shooting, Midrange Scoring, Rim Pressure, Playmaking, and Defense. PCA is applied within each block, and each block is weighted equally before distance is calculated. Blocking and possession-level features avoids comparing raw box-score numbers without context.
@@ -2863,7 +2883,7 @@ function MethodologyModal({ open, onClose }) {
                       nested
                     >
                       <p>
-                        Due to the heavy usage of possession-level frequency features and PCA-Blocking, I found Euclidean distance to perform worse compared to other directional distance / covariance-scaled metrics such as Cosine and Mahalanobis distance. My specific pipeline prevents Euclidean distance from comparing raw statistics without context.
+                        Due to the heavy usage of possession-level frequency features and PCA-Blocking, I found Euclidean distance to work best only after the pipeline standardizes each season, clips extreme values, compresses each block with PCA, and applies equal block weighting. That prevents Euclidean distance from comparing raw statistics without context.
                       </p>
                     </UniverseAccordion>
                   </div>
@@ -2980,6 +3000,7 @@ export default function App() {
   const glossaryCleanupTimerRef = useRef(null);
   const viewSwapTimerRef = useRef(null);
   const viewTransitionTimerRef = useRef(null);
+  const playerDetailCacheRef = useRef(new Map());
   const clusterReportCacheRef = useRef(new Map());
   const clusterReportRequestIdRef = useRef(0);
 
@@ -3037,16 +3058,7 @@ export default function App() {
   }, [clusterData, highlightedCluster]);
   const clusterReportRequestKey = useMemo(() => {
     if (!clusterReportRequestPayload) return null;
-    const featuresKey = Array.isArray(clusterReportRequestPayload.features)
-      ? clusterReportRequestPayload.features.join(",")
-      : "";
-    return [
-      clusterReportRequestPayload.algorithm,
-      clusterReportRequestPayload.distance_metric,
-      clusterReportRequestPayload.k,
-      featuresKey,
-      clusterReportRequestPayload.cluster_number,
-    ].join("|");
+    return buildClusterReportRequestKey(clusterReportRequestPayload);
   }, [clusterReportRequestPayload]);
 
   const stopPanelResize = () => {
@@ -3857,25 +3869,103 @@ export default function App() {
   }, [drawerOpen, galaxyFullscreenEnabled, galaxyPlotEnabled]);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/config`)
-      .then((r) => r.json())
-      .then((data) => {
-        setConfig(data);
-        setSelectedFeatures(data.default_features ?? data.allowed_features ?? []);
-        setSelectedAlgorithm("kmeans");
-        setSelectedDistanceMetric("euclidean");
-        setSelectedVisualizationMode("3d_galaxy");
-        setClusterCounts({
-          kmeans: data.euclidean_kmeans_locked_k ?? data.default_kmeans_k ?? data.default_k ?? 12,
-        });
-      })
-      .catch((err) => {
-        setError(`Failed to load config: ${String(err)}`);
+    let cancelled = false;
+
+    const applyConfig = (data) => {
+      setConfig(data);
+      setSelectedFeatures(data.default_features ?? data.allowed_features ?? []);
+      setSelectedAlgorithm("kmeans");
+      setSelectedDistanceMetric("euclidean");
+      setSelectedVisualizationMode("3d_galaxy");
+      setClusterCounts({
+        kmeans: data.euclidean_kmeans_locked_k ?? data.default_kmeans_k ?? data.default_k ?? 12,
       });
+    };
+
+    const loadStartupData = async () => {
+      try {
+        const bootstrapResponse = await fetch(DEFAULT_BOOTSTRAP_URL);
+        if (!bootstrapResponse.ok) {
+          throw new Error(`Bootstrap unavailable (${bootstrapResponse.status})`);
+        }
+
+        const bootstrapPayload = await bootstrapResponse.json();
+        const bootstrapConfig = bootstrapPayload?.config;
+        const bootstrapCluster = bootstrapPayload?.cluster;
+        if (!bootstrapConfig || !bootstrapCluster?.points?.length) {
+          throw new Error("Bootstrap payload is missing config or cluster data.");
+        }
+        if (cancelled) return;
+
+        const clusterRequestPayload = {
+          algorithm: bootstrapCluster.algorithm,
+          distance_metric: bootstrapCluster.distance_metric,
+          k: bootstrapCluster.k,
+          features: bootstrapCluster.selected_features,
+        };
+        playerDetailCacheRef.current = new Map(
+          Object.entries(bootstrapPayload.player_details_by_key ?? {}).map(([playerKey, detail]) => [
+            String(playerKey),
+            detail,
+          ])
+        );
+
+        Object.entries(bootstrapPayload.cluster_reports_by_number ?? {}).forEach(([clusterNumber, report]) => {
+          const reportKey = buildClusterReportRequestKey({
+            ...clusterRequestPayload,
+            cluster_number: Number(clusterNumber),
+          });
+          clusterReportCacheRef.current.set(reportKey, report);
+        });
+
+        setError("");
+        setLoadingClusters(false);
+        setClusterData(bootstrapCluster);
+        applyConfig(bootstrapConfig);
+      } catch {
+        try {
+          const response = await fetch(`${API_BASE}/api/config`);
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || "Config request failed.");
+          }
+          if (!cancelled) {
+            applyConfig(data);
+          }
+        } catch (err) {
+          if (!cancelled) {
+            setError(`Failed to load config: ${String(err)}`);
+          }
+        }
+      }
+    };
+
+    loadStartupData();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (!config || requestFeatures.length === 0) return;
+
+    const requestPayload = {
+      algorithm: selectedAlgorithm,
+      distance_metric: selectedDistanceMetric,
+      k: activeClusterCount,
+      features: requestFeatures,
+    };
+    const requestedClusterKey = buildClusterRequestKey(requestPayload);
+    const activeClusterDataKey = clusterData ? buildClusterRequestKey({
+      algorithm: clusterData.algorithm,
+      distance_metric: clusterData.distance_metric,
+      k: clusterData.k,
+      features: clusterData.selected_features,
+    }) : "";
+    if (clusterData && activeClusterDataKey === requestedClusterKey) {
+      setLoadingClusters(false);
+      return;
+    }
 
     const currentRequest = ++requestCounter.current;
     const handle = setTimeout(async () => {
@@ -3886,12 +3976,7 @@ export default function App() {
         const res = await fetch(`${API_BASE}/api/cluster`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            algorithm: selectedAlgorithm,
-            distance_metric: selectedDistanceMetric,
-            k: activeClusterCount,
-            features: requestFeatures,
-          }),
+          body: JSON.stringify(requestPayload),
         });
 
         const data = await res.json();
@@ -3921,7 +4006,7 @@ export default function App() {
     }, 350);
 
     return () => clearTimeout(handle);
-  }, [config, selectedAlgorithm, selectedDistanceMetric, activeClusterCount, requestFeatures]);
+  }, [config, selectedAlgorithm, selectedDistanceMetric, activeClusterCount, requestFeatures, clusterData]);
 
   useEffect(() => {
     if (!selectedPoint) {
@@ -3929,6 +4014,13 @@ export default function App() {
       if (!clusterDescriptionViewEnabled) {
         setShowAllFeatures(false);
       }
+      return;
+    }
+
+    const cachedDetail = playerDetailCacheRef.current.get(String(selectedPoint.player_key));
+    if (cachedDetail) {
+      setSelectedDetail(cachedDetail);
+      setLoadingDetail(false);
       return;
     }
 
@@ -3942,7 +4034,10 @@ export default function App() {
     })
       .then((r) => r.json())
       .then((data) => {
-        if (!cancelled) setSelectedDetail(data);
+        if (!cancelled) {
+          playerDetailCacheRef.current.set(String(selectedPoint.player_key), data);
+          setSelectedDetail(data);
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(`Failed to load player detail: ${String(err)}`);
