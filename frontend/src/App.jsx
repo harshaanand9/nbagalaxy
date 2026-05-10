@@ -6079,6 +6079,7 @@ export default function App() {
 
   const renderGalaxyPlayerProfileOverlay = () => {
     if (!galaxyFullscreenPlotActive || selectedCareerMissingSeason) return null;
+    if (highlightedCluster != null && !selectedPoint) return null;
 
     if (selectedPoint && galaxyPlayerProfileHidden) {
       return (
