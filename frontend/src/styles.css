@@ -6451,6 +6451,10 @@ input {
   white-space: nowrap;
 }
 
+.cluster-legend-future-note-after-fullscreen {
+  margin-left: 12px;
+}
+
 .browser-fullscreen-btn {
   min-width: 92px;
 }

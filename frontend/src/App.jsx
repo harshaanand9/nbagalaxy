@@ -6549,7 +6549,6 @@ export default function App() {
                       {galaxyPlotEnabled && (
                         <>
                           <span className="cluster-legend-hint">click colored dots to view archetypes</span>
-                          <span className="cluster-legend-future-note">wings + bigs will be added soon</span>
                         </>
                       )}
 
@@ -6565,14 +6564,17 @@ export default function App() {
                       )}
 
                       {galaxyPlotEnabled && (
-                        <button
-                          type="button"
-                          className="player-name-toggle browser-fullscreen-btn"
-                          onClick={handleBrowserFullscreenToggle}
-                          title="Toggle true browser fullscreen"
-                        >
-                          <span className="player-name-toggle-label">{browserFullscreenActive ? "EXIT FULL SCREEN" : "ENTER FULL SCREEN"}</span>
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            className="player-name-toggle browser-fullscreen-btn"
+                            onClick={handleBrowserFullscreenToggle}
+                            title="Toggle true browser fullscreen"
+                          >
+                            <span className="player-name-toggle-label">{browserFullscreenActive ? "EXIT FULL SCREEN" : "ENTER FULL SCREEN"}</span>
+                          </button>
+                          <span className="cluster-legend-future-note cluster-legend-future-note-after-fullscreen">wings + bigs will be added soon</span>
+                        </>
                       )}
 
                     </div>
