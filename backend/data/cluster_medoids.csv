@@ -1,0 +1,13 @@
+cluster,cluster_name,player_key,player_name,season,teams_played,position,mean_truth_distance
+1,3PT-Reliant Sharpshooter,Langston Galloway||2019-20||DET||SG,Langston Galloway,2019-20,DET,SG,1.158675
+2,"Slashing Oriented, Scoring + Playmaking Threat",Cole Anthony||2021-22||ORL||PG,Cole Anthony,2021-22,ORL,PG,1.095123
+3,3PT Oriented Lock-Down Secondary Handler,Jrue Holiday||2024-25||BOS||PG,Jrue Holiday,2024-25,BOS,PG,1.244374
+4,Expanded Role Sharpshooter,Evan Fournier||2021-22||NYK||SG,Evan Fournier,2021-22,NYK,SG,1.035803
+5,Playmaking and 3PT Spark Plug,Brandin Podziemski||2024-25||GSW||SG,Brandin Podziemski,2024-25,GSW,SG,1.113976
+6,3-Level Scoring and Playmaking Machine,Damian Lillard||2018-19||POR||PG,Damian Lillard,2018-19,POR,PG,1.109965
+7,Talented Pass-First Point,Terance Mann||2025-26||BKN||SG,Terance Mann,2025-26,BKN,SG,1.36611
+8,Limited Playmaking Spark Plug,"R.J. Hampton||2022-23||DET,ORL||SG",R.J. Hampton,2022-23,"DET,ORL",SG,1.094383
+9,Inside-the-Arc Scoring and Playmaking Machine,"De'Aaron Fox||2024-25||SAC,SAS||PG",De'Aaron Fox,2024-25,"SAC,SAS",PG,1.273464
+10,Streaky Shooting Defensive Savant,"Garrett Temple||2018-19||LAC,MEM||SG",Garrett Temple,2018-19,"LAC,MEM",SG,1.32195
+11,Slashing Oriented Lock-Down Point,Anthony Black||2024-25||ORL||PG,Anthony Black,2024-25,ORL,PG,1.280641
+12,3-Level Scoring Machine,"Jordan Clarkson||2017-18||CLE,LAL||SG",Jordan Clarkson,2017-18,"CLE,LAL",SG,1.028968

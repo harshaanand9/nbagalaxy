@@ -1,0 +1,125 @@
+export const BADGE_META = {
+  deep_range_bomber: {
+    name: "Deep Range Bomber",
+    category: "three_pt",
+    iconUrl: "https://upload.wikimedia.org/wikipedia/commons/7/74/Bomb-png-46599.png?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=original",
+    iconScale: 0.58,
+  },
+  catch_and_shoot_converter: {
+    name: "Catch and Shoot Converter",
+    category: "three_pt",
+    iconUrl: "https://png.pngtree.com/png-vector/20221212/ourmid/pngtree-slingshots-png-image_6520484.png",
+    iconScale: 0.60,
+  },
+  contested_3pt_maker: {
+    name: "Contested-3PT Maker",
+    category: "three_pt",
+    iconUrl: "https://png.pngtree.com/png-clipart/20250218/original/pngtree-comfortable-blue-sleep-mask-isolated-on-a-transparent-background-png-image_20458929.png",
+    iconScale: 0.60,
+  },
+  pull_up_3pt_machine: {
+    name: "Pull-Up 3PT Machine",
+    category: "three_pt",
+    iconUrl: "https://images.vexels.com/media/users/3/141727/isolated/preview/8b594b42b746c398aaa1f8b0c04ff83f-shot-ball-player.png",
+    iconScale: 0.64,
+  },
+  volume_3pt_shooter: {
+    name: "Volume 3PT Shooter",
+    category: "three_pt",
+    iconUrl: "https://www.shareicon.net/download/2015/10/05/651365_hand_512x512.png",
+    iconScale: 0.58,
+  },
+  three_pt_sniper: {
+    name: "3PT Sniper",
+    category: "three_pt",
+    iconUrl: "https://static.thenounproject.com/png/3968826-200.png",
+    iconScale: 0.59,
+  },
+  volume_mid_range_shooter: {
+    name: "Volume Mid-Range Shooter",
+    category: "midrange",
+    iconUrl: "/badges/source/volume_mid_range_shooter.png",
+    iconScale: 0.60,
+  },
+  mid_range_assassin: {
+    name: "Mid-Range Assassin",
+    category: "midrange",
+    iconUrl: "https://static.vecteezy.com/system/resources/thumbnails/011/887/515/small/black-knife-isolated-png.png",
+    iconScale: 0.61,
+  },
+  volume_slasher: {
+    name: "Volume Slasher",
+    category: "rim_pressure",
+    iconUrl: "https://upload.wikimedia.org/wikipedia/commons/4/49/Claw_Marks.png",
+    iconScale: 0.62,
+  },
+  efficient_driver: {
+    name: "Efficient Driver",
+    category: "rim_pressure",
+    iconUrl: "https://static.vecteezy.com/system/resources/previews/009/398/196/non_2x/steering-wheel-clipart-design-illustration-free-png.png",
+    iconScale: 0.60,
+  },
+  free_throw_generator: {
+    name: "Free Throw Generator",
+    category: "rim_pressure",
+    iconUrl: "https://png.pngtree.com/png-vector/20231018/ourmid/pngtree-basketball-referee-stop-clock-for-foul-hand-signal-retro-black-png-image_10277659.png",
+    iconScale: 0.63,
+  },
+  drive_and_kicker: {
+    name: "Drive and Kicker",
+    category: "playmaking",
+    iconUrl: "https://images.vexels.com/media/users/3/141900/isolated/lists/bf643ea0ef37a22a5e12eaf8eec3f714-karate-high-kick-training.png",
+    iconScale: 0.65,
+  },
+  inside_the_arc_scorer: {
+    name: "Inside-The-Arc Scorer",
+    category: "rim_pressure",
+    iconUrl: "https://pngimg.com/uploads/number2/Number%202%20PNG%20images%20free%20download_PNG14925.png",
+    iconScale: 0.54,
+  },
+  walking_bucket: {
+    name: "Walking Bucket",
+    category: "scoring",
+    iconUrl: "https://png.pngtree.com/png-clipart/20210309/original/pngtree-bucket-with-scale-clip-art-png-image_5892554.png",
+    iconScale: 0.61,
+  },
+  dunker: {
+    name: "Dunker",
+    category: "rim_pressure",
+    iconUrl: "https://cdn.creazilla.com/silhouettes/2915/basketball-dunk-silhouette-000000-md.png",
+    iconScale: 0.63,
+  },
+  active_hands: {
+    name: "Active Hands",
+    category: "defense",
+    iconUrl: "https://static.thenounproject.com/png/828812-200.png",
+    iconScale: 0.60,
+  },
+  defensive_lock_down: {
+    name: "Defensive Lock-Down",
+    category: "defense",
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/115/115681.png",
+    iconScale: 0.58,
+  },
+  assist_generator: {
+    name: "Assist Generator",
+    category: "playmaking",
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/11498/11498928.png",
+    iconScale: 0.59,
+    overlayGlyph: "⚡",
+    overlayClass: "electric",
+  },
+  efficient_passer: {
+    name: "Efficient Passer",
+    category: "playmaking",
+    iconUrl: "/badges/source/efficient_passer.png",
+    iconScale: 0.66,
+  },
+};
+
+export const BADGE_TIER_LABELS = {
+  diamond: "Diamond",
+  gold: "Gold",
+  silver: "Silver",
+  bronze: "Bronze",
+};

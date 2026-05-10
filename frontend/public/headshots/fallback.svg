@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="760" viewBox="0 0 1040 760">
+  <rect width="1040" height="760" fill="#061113"/>
+  <rect x="22" y="22" width="996" height="716" rx="42" fill="#081b1f" stroke="#00e5ff" stroke-width="10" opacity="0.85"/>
+  <circle cx="520" cy="295" r="128" fill="#123139" stroke="#9beeff" stroke-width="8" opacity="0.9"/>
+  <path d="M275 655c35-126 129-196 245-196s210 70 245 196" fill="#123139" stroke="#9beeff" stroke-width="8" opacity="0.9"/>
+  <text x="520" y="705" text-anchor="middle" font-family="monospace" font-size="44" fill="#00e5ff">NO_HEADSHOT</text>
+</svg>

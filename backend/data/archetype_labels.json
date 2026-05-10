@@ -1,0 +1,98 @@
+[
+  {
+    "cluster": 1,
+    "cluster_name": "3PT-Reliant Sharpshooter",
+    "x": -0.677611,
+    "y": 0.185516,
+    "z": 0.14888,
+    "player_count": 137
+  },
+  {
+    "cluster": 2,
+    "cluster_name": "Slashing Oriented, Scoring + Playmaking Threat",
+    "x": 0.408481,
+    "y": -0.119819,
+    "z": -0.11681,
+    "player_count": 141
+  },
+  {
+    "cluster": 3,
+    "cluster_name": "3PT Oriented Lock-Down Secondary Handler",
+    "x": -0.296787,
+    "y": -0.285222,
+    "z": 0.153256,
+    "player_count": 96
+  },
+  {
+    "cluster": 4,
+    "cluster_name": "Expanded Role Sharpshooter",
+    "x": -0.335416,
+    "y": 0.432011,
+    "z": 0.098427,
+    "player_count": 111
+  },
+  {
+    "cluster": 5,
+    "cluster_name": "Playmaking and 3PT Spark Plug",
+    "x": 0.11492,
+    "y": 0.023901,
+    "z": 0.265769,
+    "player_count": 145
+  },
+  {
+    "cluster": 6,
+    "cluster_name": "3-Level Scoring and Playmaking Machine",
+    "x": 0.634542,
+    "y": 0.287394,
+    "z": 0.082249,
+    "player_count": 86
+  },
+  {
+    "cluster": 7,
+    "cluster_name": "Talented Pass-First Point",
+    "x": 0.33963,
+    "y": -0.443753,
+    "z": 0.355061,
+    "player_count": 103
+  },
+  {
+    "cluster": 8,
+    "cluster_name": "Limited Playmaking Spark Plug",
+    "x": -0.249215,
+    "y": 0.074982,
+    "z": -0.199529,
+    "player_count": 182
+  },
+  {
+    "cluster": 9,
+    "cluster_name": "Inside-the-Arc Scoring and Playmaking Machine",
+    "x": 0.783141,
+    "y": 0.055929,
+    "z": -0.167593,
+    "player_count": 79
+  },
+  {
+    "cluster": 10,
+    "cluster_name": "Streaky Shooting Defensive Savant",
+    "x": -0.687281,
+    "y": -0.351447,
+    "z": -0.234895,
+    "player_count": 87
+  },
+  {
+    "cluster": 11,
+    "cluster_name": "Slashing Oriented Lock-Down Point",
+    "x": 0.038721,
+    "y": -0.503982,
+    "z": -0.183629,
+    "player_count": 97
+  },
+  {
+    "cluster": 12,
+    "cluster_name": "3-Level Scoring Machine",
+    "x": 0.257671,
+    "y": 0.374653,
+    "z": -0.180026,
+    "player_count": 133
+  }
+]

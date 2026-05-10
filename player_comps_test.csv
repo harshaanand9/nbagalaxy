@@ -1,0 +1,3 @@
+Player Name,teams_played,Season,GP,MP,OffPoss,DefPoss,position,traditional_pts,traditional_reb,traditional_ast,traditional_tov,traditional_stl,traditional_blk,traditional_fg_pct,3P_Accuracy,traditional_ft_pct,3fga_frequency,drive_tov_rate
+Cade Cunningham,DET,2023-24,62,33,70,69,PG,22.7,4.3,7.5,3.4,0.9,0.4,.449,.355,.869,.120,.085
+Cason Wallace,OKC,2023-24,82,21,42,43,SG,6.8,2.3,1.5,0.6,0.9,0.5,.491,.419,.784,.087,.035
