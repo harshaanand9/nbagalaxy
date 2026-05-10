@@ -2897,6 +2897,106 @@ function MethodologyModal({ open, onClose }) {
   );
 }
 
+function ReadMeModal({ open, onClose }) {
+  const [openSections, setOpenSections] = useState({});
+
+  if (!open) return null;
+
+  const toggleSection = (sectionKey) => {
+    setOpenSections((previousSections) => ({
+      ...previousSections,
+      [sectionKey]: !previousSections[sectionKey],
+    }));
+  };
+
+  return (
+    <div
+      className="universe-modal-backdrop universe-page-backdrop"
+      role="presentation"
+      onMouseDown={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <section
+        className="universe-modal universe-page readme-page"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="readme-modal-title"
+        onClick={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <header className="universe-modal-header universe-page-header">
+          <div>
+            <h2 id="readme-modal-title">Read Me</h2>
+          </div>
+          <button
+            type="button"
+            className="universe-modal-close-btn"
+            onClick={onClose}
+            aria-label="Close read me"
+          >
+            ×
+          </button>
+        </header>
+
+        <div className="universe-modal-body universe-page-body">
+          <div className="universe-page-shell readme-page-shell">
+            <UniverseAccordion
+              title="Selecting a player in the galaxy"
+              open={Boolean(openSections.selectingPlayer)}
+              onToggle={() => toggleSection("selectingPlayer")}
+            >
+              <p>
+                By selecting a player season in the galaxy, you are able to see his most <span className="universe-cyan-text">similar players</span> by <span className="universe-cyan-text">play-styles</span>. In the similarity page itself you are able to see the <span className="universe-cyan-text">3PT, Mid-Range, Playmaking</span>, and <span className="universe-cyan-text">Defensive</span> similarity scores individually between the selected player and his "doppelgangers".
+              </p>
+            </UniverseAccordion>
+
+            <UniverseAccordion
+              title="Viewing a player's career path"
+              open={Boolean(openSections.careerPath)}
+              onToggle={() => toggleSection("careerPath")}
+            >
+              <p>
+                You are also able to see how a player's <span className="universe-cyan-text">role</span> changes across his career by clicking the 'CAREER PATH' button in the player profile. This tells you what <span className="universe-cyan-text">clusters/archetypes</span> he was assigned to each year of his career.
+              </p>
+            </UniverseAccordion>
+
+            <UniverseAccordion
+              title="Viewing a player's skill break-down percentiles"
+              open={Boolean(openSections.skillBreakdown)}
+              onToggle={() => toggleSection("skillBreakdown")}
+            >
+              <p>
+                Every player is also assigned an accurate <span className="universe-cyan-text">3-PT, Mid-Range, Rim Pressure, Playmaking</span> and <span className="universe-cyan-text">Defensive</span> skill percentile obtained through percentile calculations explained in the site. Players are also assigned <span className="universe-cyan-text">badges</span> based on their within-season percentiles of the medians of different groups of features.
+              </p>
+            </UniverseAccordion>
+
+            <UniverseAccordion
+              title="Viewing Archetypes in The Galaxy"
+              open={Boolean(openSections.viewingArchetypes)}
+              onToggle={() => toggleSection("viewingArchetypes")}
+            >
+              <p>
+                By clicking on any of the colored dots on the top bar, you are able to view the <span className="universe-cyan-text">minimum spanning tree</span> of the selected archetype as well as the archetype's <span className="universe-cyan-text">medoid player</span>.
+              </p>
+            </UniverseAccordion>
+
+            <UniverseAccordion
+              title="Viewing Features/Statistics of Archetypes"
+              open={Boolean(openSections.archetypeFeatures)}
+              onToggle={() => toggleSection("archetypeFeatures")}
+            >
+              <p>
+                Upon clicking on the 'View Cluster Description' button when in cluster-selection view, you will enter a page displaying the <span className="universe-cyan-text">heat map</span> of all the players in the given cluster as well as a <span className="universe-cyan-text">text description</span> describing the <span className="universe-cyan-text">role</span> of cluster.
+              </p>
+            </UniverseAccordion>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 export default function App() {
   const [config, setConfig] = useState(null);
   const [selectedFeatures, setSelectedFeatures] = useState([]);
@@ -2909,6 +3009,7 @@ export default function App() {
   const [distanceMetricMenuOpen, setDistanceMetricMenuOpen] = useState(false);
   const [visualizationMenuOpen, setVisualizationMenuOpen] = useState(false);
   const [methodologyOpen, setMethodologyOpen] = useState(false);
+  const [readMeOpen, setReadMeOpen] = useState(false);
   const [clusterData, setClusterData] = useState(null);
   const [highlightedCluster, setHighlightedCluster] = useState(null);
   const [selectedPoint, setSelectedPoint] = useState(null);
@@ -4417,17 +4518,18 @@ export default function App() {
   }, [glossaryMounted]);
 
   useEffect(() => {
-    if (!methodologyOpen) return undefined;
+    if (!methodologyOpen && !readMeOpen) return undefined;
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
         setMethodologyOpen(false);
+        setReadMeOpen(false);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [methodologyOpen]);
+  }, [methodologyOpen, readMeOpen]);
 
   useEffect(() => {
     if (galaxyPlotEnabled && showPlayerNames) {
@@ -6266,6 +6368,11 @@ export default function App() {
         totalGlossaryMetrics={totalGlossaryMetrics}
       />
 
+      <ReadMeModal
+        open={readMeOpen}
+        onClose={() => setReadMeOpen(false)}
+      />
+
       <main
         ref={mainLayoutRef}
         className={`main-layout ${drawerOpen ? "drawer-open" : ""} ${galaxyFullscreenEnabled && galaxyPlotEnabled ? "galaxy-fullscreen" : ""}`}
@@ -6728,35 +6835,51 @@ export default function App() {
                     )}
 
                     {galaxyFullscreenPlotActive && (
-                      <div
-                        className="universe-info-floating-stack"
-                        onMouseDownCapture={(event) => event.stopPropagation()}
-                        onPointerDownCapture={(event) => event.stopPropagation()}
-                        onWheelCapture={(event) => event.stopPropagation()}
-                      >
+                      <>
                         <button
                           type="button"
-                          className="universe-info-floating-btn"
+                          className="readme-floating-btn"
                           onClick={(event) => {
                             event.stopPropagation();
-                            setMethodologyOpen(true);
+                            setReadMeOpen(true);
                           }}
-                          title="Open Galaxy explanation"
+                          onMouseDown={(event) => event.stopPropagation()}
+                          onPointerDown={(event) => event.stopPropagation()}
+                          title="Open site read me"
                         >
-                          What is the Galaxy?
+                          Read Me
                         </button>
-                        <a
-                          className="galaxy-contact-link"
-                          href="mailto:harsha9anand@gmail.com"
-                          onClick={(event) => event.stopPropagation()}
+
+                        <div
+                          className="universe-info-floating-stack"
+                          onMouseDownCapture={(event) => event.stopPropagation()}
+                          onPointerDownCapture={(event) => event.stopPropagation()}
+                          onWheelCapture={(event) => event.stopPropagation()}
                         >
-                          <svg className="galaxy-contact-mail-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M4 6h16v12H4V6Z" />
-                            <path d="m4 7 8 6 8-6" />
-                          </svg>
-                          <span>harsha9anand@gmail.com</span>
-                        </a>
-                      </div>
+                          <button
+                            type="button"
+                            className="universe-info-floating-btn"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setMethodologyOpen(true);
+                            }}
+                            title="Open Galaxy explanation"
+                          >
+                            What is the Galaxy?
+                          </button>
+                          <a
+                            className="galaxy-contact-link"
+                            href="mailto:harsha9anand@gmail.com"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <svg className="galaxy-contact-mail-icon" viewBox="0 0 24 24" aria-hidden="true">
+                              <path d="M4 6h16v12H4V6Z" />
+                              <path d="m4 7 8 6 8-6" />
+                            </svg>
+                            <span>harsha9anand@gmail.com</span>
+                          </a>
+                        </div>
+                      </>
                     )}
 
                     <Plot

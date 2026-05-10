@@ -5616,14 +5616,13 @@ input {
   z-index: 35;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 7px;
 }
 
-.universe-info-floating-btn {
+.universe-info-floating-btn,
+.readme-floating-btn {
   appearance: none;
-  min-height: 40px;
-  padding: 9px 15px;
   border: 1px solid rgba(0, 212, 224, 0.22);
   border-radius: 999px;
   background: rgba(2, 10, 13, 0.46);
@@ -5640,12 +5639,29 @@ input {
   transition: opacity 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
 }
 
-.universe-info-floating-btn:hover {
+.universe-info-floating-btn:hover,
+.readme-floating-btn:hover {
   opacity: 0.75;
   border-color: rgba(0, 212, 224, 0.64);
   background: rgba(2, 18, 21, 0.78);
   box-shadow: 0 0 24px rgba(0, 212, 224, 0.18);
   transform: translateY(-1px);
+}
+
+.universe-info-floating-btn {
+  min-height: 40px;
+  padding: 9px 15px;
+  font-size: 12px;
+}
+
+.readme-floating-btn {
+  position: absolute;
+  left: 21px;
+  bottom: 32px;
+  z-index: 35;
+  min-height: 34px;
+  padding: 8px 13px;
+  font-size: 10.5px;
 }
 
 .galaxy-contact-link {
@@ -6030,6 +6046,11 @@ input {
     right: 12px;
     bottom: 18px;
     max-width: calc(100vw - 24px);
+  }
+
+  .readme-floating-btn {
+    left: 12px;
+    bottom: 18px;
   }
 
   .universe-page {
