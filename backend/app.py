@@ -357,6 +357,23 @@ SIMILAR_PLAYERS_PATHS = [
     BACKEND_DIR.parent / "similar_players.csv",
 ]
 _SIMILAR_PLAYERS_CACHE: Dict[str, object] = {"path": None, "mtime_ns": None, "dataframe": None}
+SIMILAR_PLAYERS_BLOCK_SCORE_COLUMNS = [
+    "threept_similarity_score",
+    "midrange_similarity_score",
+    "rimpressure_similarity_score",
+    "playmaking_similarity_score",
+    "defense_similarity_score",
+]
+SIMILAR_PLAYERS_REQUIRED_DETAIL_COLUMNS = [
+    "strongest_similarity_blocks",
+    "biggest_difference_blocks",
+    "threept_distance",
+    "midrange_distance",
+    "rimpressure_distance",
+    "playmaking_distance",
+    "defense_distance",
+    *SIMILAR_PLAYERS_BLOCK_SCORE_COLUMNS,
+]
 
 HEADSHOT_MAP_PATH = Path(
     os.environ.get(
@@ -1142,6 +1159,32 @@ def build_block_scores(row: pd.Series) -> Dict[str, Dict[str, float]]:
             "similarity_score": row_float(row, "defense_similarity_score"),
         },
     }
+
+
+def similar_players_rows_have_detail_payload(rows: pd.DataFrame) -> bool:
+    if rows.empty:
+        return False
+
+    missing_columns = [
+        column_name
+        for column_name in SIMILAR_PLAYERS_REQUIRED_DETAIL_COLUMNS
+        if column_name not in rows.columns
+    ]
+    if missing_columns:
+        return False
+
+    score_frame = rows[SIMILAR_PLAYERS_BLOCK_SCORE_COLUMNS].apply(pd.to_numeric, errors="coerce")
+    if score_frame.isna().any().any():
+        return False
+    if float(score_frame.abs().sum().sum()) <= 0.0:
+        return False
+
+    for column_name in ["strongest_similarity_blocks", "biggest_difference_blocks"]:
+        non_empty_mask = rows[column_name].map(lambda value: bool(str(safe_json_value(value, "")).strip()))
+        if not bool(non_empty_mask.all()):
+            return False
+
+    return True
 
 
 def ordered_unique(items: List[str]) -> List[str]:
@@ -3522,10 +3565,11 @@ def build_galaxy_payload(
     algorithm: str,
     distance_metric: str,
     metric_meta: Optional[Dict[str, object]] = None,
+    include_block_details: bool = False,
 ) -> Dict[str, object]:
     distance_matrix = pairwise_distance_matrix(X_metric, "euclidean")
     block_slices = None
-    if metric_meta is not None and bool(display_meta.get("precomputed", False)):
+    if metric_meta is not None and (include_block_details or bool(display_meta.get("precomputed", False))):
         # Block-level edge details are expensive to compute live and should come
         # from the precomputed galaxy asset. Keep live fallback fast so the
         # initial scatter/galaxy render does not sit on LOADING_SCATTER.
@@ -5268,8 +5312,8 @@ def similar_players(
         dataframe, csv_path = load_similar_players_dataframe()
     except FileNotFoundError:
         return build_similar_players_response_from_galaxy(player_name=player_name, season=season)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except ValueError:
+        return build_similar_players_response_from_galaxy(player_name=player_name, season=season)
 
     expected_signature = build_locked_euclidean_feature_signature()
     if "feature_signature" not in dataframe.columns:
@@ -5289,10 +5333,10 @@ def similar_players(
     )
 
     if candidate_rows.empty:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No similar players found for {player_name} {season}.",
-        )
+        return build_similar_players_response_from_galaxy(player_name=player_name, season=season)
+
+    if not similar_players_rows_have_detail_payload(candidate_rows):
+        return build_similar_players_response_from_galaxy(player_name=player_name, season=season)
 
     candidate_rows["_rank_numeric"] = pd.to_numeric(candidate_rows["rank"], errors="coerce")
     candidate_rows["_score_numeric"] = pd.to_numeric(candidate_rows.get("overall_similarity_score", 0.0), errors="coerce")

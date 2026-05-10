@@ -117,6 +117,7 @@ def main() -> None:
         algorithm="kmeans",
         distance_metric="euclidean",
         metric_meta=metric_meta,
+        include_block_details=True,
     )
 
     coordinate_rows = []
