@@ -5609,11 +5609,18 @@ input {
 }
 
 /* Universe explanation page */
-.universe-info-floating-btn {
+.universe-info-floating-stack {
   position: absolute;
   right: 21px;
-  bottom: 21px;
+  bottom: 32px;
   z-index: 35;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.universe-info-floating-btn {
   appearance: none;
   min-height: 40px;
   padding: 9px 15px;
@@ -5639,6 +5646,37 @@ input {
   background: rgba(2, 18, 21, 0.78);
   box-shadow: 0 0 24px rgba(0, 212, 224, 0.18);
   transform: translateY(-1px);
+}
+
+.galaxy-contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  color: rgba(223, 243, 244, 0.72);
+  opacity: 0.78;
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0 12px rgba(0, 212, 224, 0.16);
+  transition: opacity 160ms ease, color 160ms ease;
+}
+
+.galaxy-contact-link:hover {
+  color: rgba(223, 243, 244, 0.9);
+  opacity: 0.95;
+}
+
+.galaxy-contact-mail-icon {
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .universe-modal-backdrop {
@@ -5988,9 +6026,9 @@ input {
 }
 
 @media (max-width: 760px) {
-  .universe-info-floating-btn {
+  .universe-info-floating-stack {
     right: 12px;
-    bottom: 12px;
+    bottom: 18px;
     max-width: calc(100vw - 24px);
   }
 

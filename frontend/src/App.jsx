@@ -6728,17 +6728,35 @@ export default function App() {
                     )}
 
                     {galaxyFullscreenPlotActive && (
-                      <button
-                        type="button"
-                        className="universe-info-floating-btn"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setMethodologyOpen(true);
-                        }}
-                        title="Open Galaxy explanation"
+                      <div
+                        className="universe-info-floating-stack"
+                        onMouseDownCapture={(event) => event.stopPropagation()}
+                        onPointerDownCapture={(event) => event.stopPropagation()}
+                        onWheelCapture={(event) => event.stopPropagation()}
                       >
-                        What is the Galaxy?
-                      </button>
+                        <button
+                          type="button"
+                          className="universe-info-floating-btn"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setMethodologyOpen(true);
+                          }}
+                          title="Open Galaxy explanation"
+                        >
+                          What is the Galaxy?
+                        </button>
+                        <a
+                          className="galaxy-contact-link"
+                          href="mailto:harsha9anand@gmail.com"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <svg className="galaxy-contact-mail-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 6h16v12H4V6Z" />
+                            <path d="m4 7 8 6 8-6" />
+                          </svg>
+                          <span>harsha9anand@gmail.com</span>
+                        </a>
+                      </div>
                     )}
 
                     <Plot
