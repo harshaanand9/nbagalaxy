@@ -1810,13 +1810,26 @@ function PentagonSkillRadar({ title, eyebrow, scores = {}, color = CLUSTER_COLOR
   );
 }
 
+function getBreakdownPlayerDisplayLabel(data, sourcePoint, fallback = "NO_PLAYER_SELECTED") {
+  const player = data?.player;
+  const playerName = player?.player_name ?? player?.name ?? player?.label ?? sourcePoint?.player_name;
+  const season = player?.season ?? sourcePoint?.season;
+  if (!playerName) return fallback;
+
+  const playerText = String(playerName).trim();
+  const seasonText = season == null ? "" : String(season).trim();
+  if (!seasonText) return playerText || fallback;
+  if (playerText.startsWith(`(${seasonText})`) || playerText.startsWith(`${seasonText} `)) return playerText;
+  return `(${seasonText}) ${playerText}`;
+}
+
 function buildBreakdownCards(data, sourcePoint, axes, baseColor = CLUSTER_COLORS[0]) {
   const playerSeason = data?.player?.season ?? sourcePoint?.season;
   return [
     {
       key: "player",
       eyebrow: "SELECTED_PLAYER",
-      title: data?.player?.label ?? sourcePoint?.player_name ?? "Selected Player",
+      title: getBreakdownPlayerDisplayLabel(data, sourcePoint, "Selected Player"),
       scores: data?.player?.scores,
       color: baseColor,
     },
@@ -2048,8 +2061,7 @@ function SkillBreakdownMethodologyPage({ open, onClose }) {
 
 function SkillBreakdownView({ data, sourcePoint, loading, error, onBack, onOpenThreePtBreakdown }) {
   const axes = data?.axes?.length ? data.axes : SKILL_BREAKDOWN_AXES;
-  const playerLabel = data?.player?.label
-    ?? (sourcePoint ? `${sourcePoint.player_name} · ${sourcePoint.season}` : "NO_PLAYER_SELECTED");
+  const playerLabel = getBreakdownPlayerDisplayLabel(data, sourcePoint);
   const cards = buildBreakdownCards(data, sourcePoint, axes, CLUSTER_COLORS[0]);
   const [skillMethodologyOpen, setSkillMethodologyOpen] = useState(false);
 
@@ -2102,8 +2114,7 @@ function SkillBreakdownView({ data, sourcePoint, loading, error, onBack, onOpenT
 
 function ThreePtBreakdownView({ data, sourcePoint, loading, error, onBack }) {
   const axes = data?.axes?.length ? data.axes : THREE_PT_BREAKDOWN_AXES;
-  const playerLabel = data?.player?.label
-    ?? (sourcePoint ? `${sourcePoint.player_name} · ${sourcePoint.season}` : "NO_PLAYER_SELECTED");
+  const playerLabel = getBreakdownPlayerDisplayLabel(data, sourcePoint);
   const cards = buildBreakdownCards(data, sourcePoint, axes, "#E7FF6B");
 
   return (
@@ -2740,6 +2751,7 @@ function MethodologyModal({ open, onClose }) {
   const [playersRemovedOpen, setPlayersRemovedOpen] = useState(false);
   const [kMeansOpen, setKMeansOpen] = useState(false);
   const [euclideanOpen, setEuclideanOpen] = useState(false);
+  const [inspirationsOpen, setInspirationsOpen] = useState(false);
 
   if (!open) return null;
 
@@ -2889,6 +2901,16 @@ function MethodologyModal({ open, onClose }) {
                   </div>
                 </section>
               </div>
+            </UniverseAccordion>
+
+            <UniverseAccordion
+              title="Inspirations"
+              open={inspirationsOpen}
+              onToggle={() => setInspirationsOpen((previousValue) => !previousValue)}
+            >
+              <p>
+                I took visual inspiration from draftballr's draft prospect galaxy. I wanted to mirror it for NBA players. Our clustering and embedding techniques used are completely different though.
+              </p>
             </UniverseAccordion>
           </div>
         </div>
