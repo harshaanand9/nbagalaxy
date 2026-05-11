@@ -38,7 +38,7 @@ def main() -> None:
     dataset = str(Path(args.dataset).expanduser())
     dlebron_dataset = str(Path(args.dlebron_dataset).expanduser())
 
-    run_step("Precompute galaxy assets", [sys.executable, str(SCRIPTS_DIR / "precompute_galaxy_assets.py"), "--dataset", dataset])
+    run_step("Precompute galaxy assets", [sys.executable, str(SCRIPTS_DIR / "precompute_galaxy_assets.py"), "--dataset", dataset, "--dlebron-dataset", dlebron_dataset])
     run_step("Precompute player badges", [sys.executable, str(SCRIPTS_DIR / "precompute_player_badges.py"), "--dataset", dataset, "--dlebron-dataset", dlebron_dataset])
     run_step("Precompute skill and 3PT breakdowns", [sys.executable, str(SCRIPTS_DIR / "precompute_player_breakdowns.py"), "--dataset", dataset, "--dlebron-dataset", dlebron_dataset])
 

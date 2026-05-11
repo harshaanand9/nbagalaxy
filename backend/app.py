@@ -29,7 +29,7 @@ except ImportError:
     )
 
 
-APP_VERSION = "0.18.0"
+APP_VERSION = "0.22.0"
 BACKEND_DIR = Path(__file__).resolve().parent
 BACKEND_DATA_DIR = BACKEND_DIR / "data"
 DEFAULT_DATASET_PATH = os.environ.get(
@@ -141,76 +141,77 @@ CURRENT_CSV_FEATURES = [
     "crafted_cdpm",
     "crafted_box_creation",
     "crafted_passer_rating",
+    "D-LEBRON",
+    "tight_very_tight_3fga_per_game",
+    "open_3fga_per_game",
+    "Wide_Open_3FGA_per_game",
+    "pull_up_3PA_per_game",
+    "catch_shoot_3PA_per_game",
+    "tight_very_tight_2fga_per_game",
+    "open_2fga_per_game",
+    "pull_up_2PA_per_game",
+    "restricted_area_fga_per_game",
+    "paint_non_ra_fga_per_game",
+    "drive_fga_per_game",
+    "drives_per_game",
+    "contested_shots_per_game",
+    "off_fouls_drawn_per_game",
+    "potential_assists_and_ft_assists",
 ]
 
 EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES = {
     "ThreePT": [
-        "tight_very_tight_3fga_frequency",
+        "tight_very_tight_3fga_per_game",
         "tight_very_tight_3fga_accuracy",
-        "open_3fga_frequency",
+        "open_3fga_per_game",
         "open_3fga_accuracy",
-        "Wide_Open_3FGA_Frequency",
+        "Wide_Open_3FGA_per_game",
         "Wide_Open_3FG_PCT",
-        "pct_3fga_wide_open",
-        "pull_up_3P_frequency",
+        "pull_up_3PA_per_game",
         "pull_up_3P_accuracy",
-        "catch_shoot_3P_frequency",
+        "catch_shoot_3PA_per_game",
         "catch_shoot_3P_accuracy",
         "avg_drib_fg3a",
         "Avg3ptShotDistance",
-        "3fga_frequency",
-        "3P_Accuracy",
         "pts_from_3s_per_75",
         "pct_fga_3FGA",
         "pct_3p_fg_assisted",
+        "avg_closest_defender_3FGA",
     ],
     "MidRange": [
-        "tight_very_tight_2fga_frequency",
+        "tight_very_tight_2fga_per_game",
         "tight_very_tight_2fga_accuracy",
-        "open_2fga_frequency",
+        "open_2fga_per_game",
         "open_2fga_accuracy",
-        "pull_up_2P_frequency",
-        "pull_up_2P_accuracy",
         "Avg2ptShotDistance",
         "pct_fga_MR",
         "pts_from_midrange_per_75",
-        "pct_2p_fg_assisted",
     ],
     "RimPressure": [
-        "RestrictedArea_Frequency",
+        "restricted_area_fga_per_game",
         "RestrictedArea_Accuracy",
-        "Paint_Non_RA_Frequency",
+        "paint_non_ra_fga_per_game",
         "Paint_Non_RA_Accuracy",
-        "drive_fga_frequency",
+        "drive_fga_per_game",
         "drive_fg_pct",
-        "Pct_Paint_FGA_from_drives",
         "dunks_per_75_poss",
         "pts_from_drives_per_75",
         "pct_fga_drive_fga",
+        "drive_fta_rate",
     ],
     "Playmaking": [
-        "potential_ast_tov_ratio",
-        "assist_frequency",
-        "drib_tov_ratio",
         "avg_drib_per_touch",
-        "pass_tov_ratio",
-        "Pass_shot_ratio",
-        "potential_assist_frequency",
-        "potential_assist_FGA_ratio",
         "avg_sec_per_touch",
-        "ASSISTS_ON_OFF",
         "crafted_box_creation",
         "crafted_passer_rating",
+        "pts_created_from_assists",
+        "potential_assists_and_ft_assists",
     ],
     "Defense": [
-        "Blocks_per_75",
-        "Steals_per_75",
-        "Deflections_per_75",
-        "off_fouls_drawn_frequency",
-        "opp_players_fg_pct_difference",
-        "contested_shot_frequency",
-        "crafted_cdpm",
+        "D-LEBRON",
         "Opp_players_fga_per_75_poss",
+        "contested_shots_per_game",
+        "off_fouls_drawn_per_game",
     ],
 }
 EUCLIDEAN_KMEANS_LOCKED_GROUP_WEIGHTS = {
@@ -229,13 +230,19 @@ def build_locked_euclidean_feature_signature() -> str:
         "euclidean_kmeans_locked_group_weights": EUCLIDEAN_KMEANS_LOCKED_GROUP_WEIGHTS,
         "euclidean_kmeans_locked_group_order": EUCLIDEAN_KMEANS_LOCKED_GROUP_ORDER,
         "euclidean_kmeans_locked_k": EUCLIDEAN_KMEANS_LOCKED_K,
-        "euclidean_kmeans_locked_pca_variance_target": EUCLIDEAN_KMEANS_LOCKED_PCA_VARIANCE_TARGET,
         "euclidean_kmeans_locked_clip_zscore": EUCLIDEAN_KMEANS_LOCKED_CLIP_ZSCORE,
+        "euclidean_kmeans_locked_pipeline": EUCLIDEAN_KMEANS_LOCKED_PIPELINE,
+        "euclidean_kmeans_locked_similarity_distance_metric": EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
+        "euclidean_kmeans_locked_luka_override_metric": LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC,
     }
     raw_signature = json.dumps(signature_payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(raw_signature).hexdigest()
 EUCLIDEAN_KMEANS_LOCKED_K = 12
-EUCLIDEAN_KMEANS_LOCKED_PCA_VARIANCE_TARGET = 0.90
+EUCLIDEAN_KMEANS_LOCKED_PIPELINE = "per_game_raw43_equal_blocks_cosine_luka_euclidean"
+EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM = "season_median_imputed_guard_standardized_clipped_raw43_equal_blocks"
+EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC = "cosine"
+LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC = "euclidean"
+LUKA_DONCIC_SIMILARITY_OVERRIDE_KEY = "lukadoncic"
 GALAXY_SIMILAR_PLAYER_COUNT = 5
 GALAXY_CLUSTER_KNN_COUNT = 2
 GALAXY_UMAP_N_NEIGHBORS = 35
@@ -316,7 +323,7 @@ THREE_PT_BREAKDOWN_LOWER_IS_BETTER_BY_GROUP = {
 }
 SKILL_BREAKDOWN_LOCAL_PERCENTILE_RULES_BY_GROUP = {}
 THREE_PT_BREAKDOWN_LOCAL_PERCENTILE_RULES_BY_GROUP = {}
-EUCLIDEAN_KMEANS_LOCKED_CLIP_ZSCORE = 3.25
+EUCLIDEAN_KMEANS_LOCKED_CLIP_ZSCORE = 3.50
 EUCLIDEAN_KMEANS_LOCKED_ASSIGNMENTS_PATH = Path(
     os.environ.get(
         "EUCLIDEAN_KMEANS_LOCKED_ASSIGNMENTS_PATH",
@@ -879,10 +886,150 @@ def load_dlebron_lookup() -> Dict[str, float]:
     return lookup
 
 
+PLAYER_COMPS_SIMILARITY_SIDELOAD_FEATURES = [
+    DLEBRON_FEATURE,
+    "passing_potential_ast",
+    "passing_ft_ast",
+    "hustle_contested_shots",
+    "offensive_fouls_drawn",
+]
+
+FREQUENCY_TO_PER_GAME_MAP = {
+    "tight_very_tight_3fga_frequency": {"output": "tight_very_tight_3fga_per_game", "possession_base": "OffPoss"},
+    "open_3fga_frequency": {"output": "open_3fga_per_game", "possession_base": "OffPoss"},
+    "Wide_Open_3FGA_Frequency": {"output": "Wide_Open_3FGA_per_game", "possession_base": "OffPoss"},
+    "pull_up_3P_frequency": {"output": "pull_up_3PA_per_game", "possession_base": "OffPoss"},
+    "catch_shoot_3P_frequency": {"output": "catch_shoot_3PA_per_game", "possession_base": "OffPoss"},
+    "tight_very_tight_2fga_frequency": {"output": "tight_very_tight_2fga_per_game", "possession_base": "OffPoss"},
+    "open_2fga_frequency": {"output": "open_2fga_per_game", "possession_base": "OffPoss"},
+    "pull_up_2P_frequency": {"output": "pull_up_2PA_per_game", "possession_base": "OffPoss"},
+    "RestrictedArea_Frequency": {"output": "restricted_area_fga_per_game", "possession_base": "OffPoss"},
+    "Paint_Non_RA_Frequency": {"output": "paint_non_ra_fga_per_game", "possession_base": "OffPoss"},
+    "drive_fga_frequency": {"output": "drive_fga_per_game", "possession_base": "OffPoss"},
+    "drive_frequency": {"output": "drives_per_game", "possession_base": "OffPoss"},
+    "potential_assist_frequency": {"output": "potential_assists_per_game", "possession_base": "OffPoss"},
+    "contested_shot_frequency": {"output": "contested_shots_per_game", "possession_base": "DefPoss"},
+    "off_fouls_drawn_frequency": {"output": "off_fouls_drawn_per_game", "possession_base": "DefPoss"},
+}
+
+
+def safe_per_game_from_frequency(
+    frequency_series: pd.Series,
+    possession_series: pd.Series,
+    gp_series: pd.Series,
+) -> pd.Series:
+    frequency_values = pd.to_numeric(frequency_series, errors="coerce")
+    possession_values = pd.to_numeric(possession_series, errors="coerce")
+    gp_values = pd.to_numeric(gp_series, errors="coerce")
+    per_game_values = np.where(gp_values > 0, frequency_values * possession_values / gp_values, np.nan)
+    return pd.Series(per_game_values, index=frequency_series.index, dtype=float)
+
+
+def load_player_comps_side_feature_lookup(feature_names: List[str]) -> Dict[str, Dict[str, float]]:
+    path = Path(PLAYER_COMPS_DATASET_PATH).expanduser()
+    if not path.exists():
+        return {}
+
+    try:
+        source = pd.read_csv(path, low_memory=False)
+    except Exception:
+        return {}
+
+    required_columns = {"Player Name", "Season"}
+    available_feature_names = [feature_name for feature_name in feature_names if feature_name in source.columns]
+    if not required_columns.issubset(set(source.columns)) or not available_feature_names:
+        return {}
+
+    compact = source[["Player Name", "Season", *available_feature_names]].copy()
+    compact["_assignment_key"] = compact.apply(lambda row: build_assignment_key(row["Player Name"], row["Season"]), axis=1)
+    compact = compact.drop_duplicates(subset=["_assignment_key"], keep="last")
+
+    lookup: Dict[str, Dict[str, float]] = {}
+    for _, row in compact.iterrows():
+        feature_payload: Dict[str, float] = {}
+        for feature_name in available_feature_names:
+            numeric_value = pd.to_numeric(pd.Series([row[feature_name]]), errors="coerce").iloc[0]
+            if pd.notna(numeric_value):
+                feature_payload[feature_name] = float(numeric_value)
+        if feature_payload:
+            lookup[str(row["_assignment_key"])] = feature_payload
+    return lookup
+
+
+def attach_player_comps_side_features(guards: pd.DataFrame, feature_names: List[str]) -> pd.DataFrame:
+    lookup = load_player_comps_side_feature_lookup(feature_names)
+    output = guards.copy()
+    for feature_name in feature_names:
+        if feature_name not in output.columns:
+            output[feature_name] = np.nan
+
+    if not lookup:
+        return output
+
+    keys = output.apply(lambda row: build_assignment_key(row["Player Name"], row["Season"]), axis=1)
+    for feature_name in feature_names:
+        side_values = keys.map(lambda key: lookup.get(str(key), {}).get(feature_name, np.nan))
+        output[feature_name] = pd.to_numeric(output[feature_name], errors="coerce").fillna(side_values)
+    return output
+
+
+def add_locked_similarity_derived_features(guards: pd.DataFrame) -> pd.DataFrame:
+    output = attach_player_comps_side_features(guards, PLAYER_COMPS_SIMILARITY_SIDELOAD_FEATURES)
+
+    for _, spec in FREQUENCY_TO_PER_GAME_MAP.items():
+        output_column = str(spec["output"])
+        if output_column not in output.columns:
+            output[output_column] = np.nan
+
+    if "GP" in output.columns:
+        for frequency_column, spec in FREQUENCY_TO_PER_GAME_MAP.items():
+            output_column = str(spec["output"])
+            possession_column = str(spec["possession_base"])
+            if frequency_column not in output.columns or possession_column not in output.columns:
+                continue
+            output[output_column] = safe_per_game_from_frequency(
+                frequency_series=output[frequency_column],
+                possession_series=output[possession_column],
+                gp_series=output["GP"],
+            )
+
+    if "hustle_contested_shots" in output.columns and "contested_shots_per_game" in output.columns:
+        output["contested_shots_per_game"] = pd.to_numeric(output["contested_shots_per_game"], errors="coerce").fillna(
+            pd.to_numeric(output["hustle_contested_shots"], errors="coerce")
+        )
+    if "offensive_fouls_drawn" in output.columns and "off_fouls_drawn_per_game" in output.columns:
+        output["off_fouls_drawn_per_game"] = pd.to_numeric(output["off_fouls_drawn_per_game"], errors="coerce").fillna(
+            pd.to_numeric(output["offensive_fouls_drawn"], errors="coerce")
+        )
+
+    potential_assists = pd.Series(np.nan, index=output.index, dtype=float)
+    if "passing_potential_ast" in output.columns:
+        potential_assists = pd.to_numeric(output["passing_potential_ast"], errors="coerce")
+    if potential_assists.isna().all() and "potential_assists_per_game" in output.columns:
+        potential_assists = pd.to_numeric(output["potential_assists_per_game"], errors="coerce")
+
+    ft_assists = pd.Series(np.nan, index=output.index, dtype=float)
+    if "passing_ft_ast" in output.columns:
+        ft_assists = pd.to_numeric(output["passing_ft_ast"], errors="coerce")
+
+    combined_playmaking_volume = potential_assists.fillna(0.0) + ft_assists.fillna(0.0)
+    combined_playmaking_volume = combined_playmaking_volume.where(potential_assists.notna() | ft_assists.notna(), np.nan)
+    output["potential_assists_and_ft_assists"] = combined_playmaking_volume.astype(float)
+
+    return output
+
+
 def attach_dlebron_to_skill_breakdown_guards(guards: pd.DataFrame) -> pd.DataFrame:
     """Return guards with D-LEBRON populated from the player-comps CSV when needed."""
-    if DLEBRON_FEATURE in guards.columns and pd.to_numeric(guards[DLEBRON_FEATURE], errors="coerce").notna().any():
-        return guards
+    return attach_player_comps_side_features(guards, [DLEBRON_FEATURE])
+
+
+def attach_dlebron_to_guards(guards: pd.DataFrame) -> pd.DataFrame:
+    return attach_dlebron_to_skill_breakdown_guards(guards)
+
+
+def attach_dlebron_to_skill_breakdown_guards_legacy(guards: pd.DataFrame) -> pd.DataFrame:
+    """Legacy narrow D-LEBRON lookup kept for compatibility with old call paths."""
 
     lookup = load_dlebron_lookup()
     if not lookup:
@@ -1896,8 +2043,10 @@ def load_base_dataframe(dataset_path: str) -> Dict:
     if missing_features:
         # Badge/skill-breakdown features are optional for the initial scatter/galaxy render.
         # Fill absent optional columns instead of killing /api/cluster with a 500.
-        for missing_feature in missing_features:
-            df[missing_feature] = np.nan
+        df = pd.concat(
+            [df, pd.DataFrame({missing_feature: np.nan for missing_feature in missing_features}, index=df.index)],
+            axis=1,
+        )
 
     remove_df = pd.DataFrame(
         ROWS_TO_REMOVE,
@@ -1910,6 +2059,7 @@ def load_base_dataframe(dataset_path: str) -> Dict:
         how="left",
     )
     df = df[df["_remove_flag"] != 1].drop(columns=["_remove_flag"]).copy()
+    df = add_locked_similarity_derived_features(df)
 
     guards = df[df["position"].isin(["PG", "SG"])].copy()
     if guards.empty:
@@ -2050,29 +2200,11 @@ def season_standardize_clip_for_locked_euclidean(
 
 
 
-def fit_locked_block_pca(
-    input_matrix: np.ndarray,
-    pca_variance_target: float,
-) -> tuple[np.ndarray, int, float]:
-    full_pca_model = PCA(svd_solver="full")
-    full_pca_model.fit(input_matrix)
-
-    explained_variance_ratio_array = np.asarray(full_pca_model.explained_variance_ratio_, dtype=float)
-    cumulative_explained_variance_array = np.cumsum(explained_variance_ratio_array)
-    retained_component_count = int(np.searchsorted(cumulative_explained_variance_array, pca_variance_target) + 1)
-    retained_component_count = max(1, min(retained_component_count, input_matrix.shape[1]))
-
-    reduced_pca_model = PCA(n_components=retained_component_count, svd_solver="full")
-    reduced_matrix = reduced_pca_model.fit_transform(input_matrix)
-    retained_explained_variance = float(np.sum(reduced_pca_model.explained_variance_ratio_))
-    return reduced_matrix, retained_component_count, retained_explained_variance
-
-
-def build_locked_blockwise_pca_euclidean_space(
+def build_locked_equal_block_weighted_raw_space(
     standardized_feature_frame: pd.DataFrame,
 ) -> tuple[np.ndarray, List[Dict[str, object]], Dict[str, Dict[str, int]]]:
     transformed_group_matrices: List[np.ndarray] = []
-    pca_summary_rows: List[Dict[str, object]] = []
+    block_summary_rows: List[Dict[str, object]] = []
     block_slice_map: Dict[str, Dict[str, int]] = {}
     start_component_index = 0
 
@@ -2080,46 +2212,42 @@ def build_locked_blockwise_pca_euclidean_space(
         group_feature_list = EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES[group_name]
         group_weight = float(EUCLIDEAN_KMEANS_LOCKED_GROUP_WEIGHTS[group_name])
         group_input_matrix = standardized_feature_frame[group_feature_list].to_numpy(dtype=float)
+        feature_count = int(len(group_feature_list))
+        per_coordinate_group_scale = float(np.sqrt(group_weight / feature_count))
+        weighted_group_matrix = group_input_matrix * per_coordinate_group_scale
 
-        reduced_group_matrix, retained_component_count, retained_explained_variance = fit_locked_block_pca(
-            input_matrix=group_input_matrix,
-            pca_variance_target=EUCLIDEAN_KMEANS_LOCKED_PCA_VARIANCE_TARGET,
-        )
-
-        per_coordinate_group_scale = float(np.sqrt(group_weight / retained_component_count))
-        weighted_group_matrix = reduced_group_matrix * per_coordinate_group_scale
         transformed_group_matrices.append(weighted_group_matrix)
 
-        end_component_index = start_component_index + retained_component_count
+        end_component_index = start_component_index + feature_count
         block_slice_map[group_name] = {
             "start_component_index": int(start_component_index),
             "end_component_index": int(end_component_index),
-            "retained_component_count": int(retained_component_count),
+            "feature_count": int(feature_count),
+            "features": list(group_feature_list),
         }
-        pca_summary_rows.append(
+        block_summary_rows.append(
             {
                 "group": group_name,
-                "pca_variance_target": float(EUCLIDEAN_KMEANS_LOCKED_PCA_VARIANCE_TARGET),
-                "original_feature_count": int(len(group_feature_list)),
-                "retained_component_count": int(retained_component_count),
-                "retained_explained_variance": float(retained_explained_variance),
+                "feature_count": int(feature_count),
                 "group_weight": float(group_weight),
                 "per_coordinate_group_scale": float(per_coordinate_group_scale),
                 "start_component_index": int(start_component_index),
                 "end_component_index": int(end_component_index),
+                "features": list(group_feature_list),
             }
         )
         start_component_index = end_component_index
 
     final_clustering_matrix = np.hstack(transformed_group_matrices)
-    return final_clustering_matrix, pca_summary_rows, block_slice_map
+    return final_clustering_matrix, block_summary_rows, block_slice_map
 
 def build_locked_euclidean_kmeans_space(base_guards: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, np.ndarray, Dict]:
+    base_guards = add_locked_similarity_derived_features(base_guards)
     locked_feature_columns = get_locked_euclidean_kmeans_feature_columns(raw=False)
     missing_feature_columns = [column_name for column_name in locked_feature_columns if column_name not in base_guards.columns]
     if missing_feature_columns:
         raise ValueError(
-            "These required locked Euclidean KMeans columns are missing from the dataset: "
+            "These required locked similarity columns are missing from the dataset: "
             f"{missing_feature_columns}"
         )
 
@@ -2171,7 +2299,7 @@ def build_locked_euclidean_kmeans_space(base_guards: pd.DataFrame) -> tuple[pd.D
         clip_zscore_value=EUCLIDEAN_KMEANS_LOCKED_CLIP_ZSCORE,
     )
 
-    final_clustering_matrix, pca_summary_rows, block_slice_map = build_locked_blockwise_pca_euclidean_space(
+    final_clustering_matrix, block_summary_rows, block_slice_map = build_locked_equal_block_weighted_raw_space(
         standardized_feature_frame=standardized_feature_frame,
     )
 
@@ -2182,8 +2310,10 @@ def build_locked_euclidean_kmeans_space(base_guards: pd.DataFrame) -> tuple[pd.D
     locked_guards = locked_guards.drop(columns=["assignment_key"])
 
     metric_meta = {
-        "distance_metric": "euclidean",
-        "space_transform": "season_standardized_clipped_block_pca_090_weighted_euclidean",
+        "distance_metric": EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
+        "similarity_distance_metric": EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
+        "space_transform": EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM,
+        "pipeline": EUCLIDEAN_KMEANS_LOCKED_PIPELINE,
         "euclidean_kmeans_locked_mode": True,
         "euclidean_kmeans_locked_k": EUCLIDEAN_KMEANS_LOCKED_K,
         "euclidean_kmeans_locked_assignment_source": str(EUCLIDEAN_KMEANS_LOCKED_ASSIGNMENTS_PATH),
@@ -2194,10 +2324,11 @@ def build_locked_euclidean_kmeans_space(base_guards: pd.DataFrame) -> tuple[pd.D
         "euclidean_kmeans_locked_group_order": EUCLIDEAN_KMEANS_LOCKED_GROUP_ORDER,
         "euclidean_kmeans_locked_feature_signature": build_locked_euclidean_feature_signature(),
         "euclidean_kmeans_locked_clip_zscore": EUCLIDEAN_KMEANS_LOCKED_CLIP_ZSCORE,
-        "euclidean_kmeans_locked_pca_variance_target": EUCLIDEAN_KMEANS_LOCKED_PCA_VARIANCE_TARGET,
-        "euclidean_kmeans_locked_pca_summary": pca_summary_rows,
+        "euclidean_kmeans_locked_block_summary": block_summary_rows,
         "euclidean_kmeans_locked_block_slices": block_slice_map,
         "euclidean_kmeans_locked_excluded_names": sorted(EUCLIDEAN_KMEANS_LOCKED_EXCLUDED_NAMES),
+        "euclidean_kmeans_locked_luka_euclidean_override_names": ["Luka Doncic"],
+        "euclidean_kmeans_locked_luka_euclidean_override_metric": LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC,
         "euclidean_kmeans_unmatched_guard_rows_dropped": unmatched_guard_count,
         "euclidean_kmeans_matched_assignment_count": matched_assignment_count,
         "euclidean_kmeans_assignment_rows_not_in_dataset": missing_dataset_assignment_count,
@@ -2235,7 +2366,9 @@ def build_cache_key(
         "euclidean_kmeans_locked_group_features": EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES,
         "euclidean_kmeans_locked_group_weights": EUCLIDEAN_KMEANS_LOCKED_GROUP_WEIGHTS,
         "euclidean_kmeans_locked_group_order": EUCLIDEAN_KMEANS_LOCKED_GROUP_ORDER,
-        "euclidean_kmeans_locked_pca_variance_target": EUCLIDEAN_KMEANS_LOCKED_PCA_VARIANCE_TARGET,
+        "euclidean_kmeans_locked_pipeline": EUCLIDEAN_KMEANS_LOCKED_PIPELINE,
+        "euclidean_kmeans_locked_similarity_distance_metric": EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
+        "euclidean_kmeans_locked_luka_override_metric": LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC,
         "galaxy_similar_player_count": GALAXY_SIMILAR_PLAYER_COUNT,
         "galaxy_cluster_knn_count": GALAXY_CLUSTER_KNN_COUNT,
         "galaxy_umap_n_neighbors": GALAXY_UMAP_N_NEIGHBORS,
@@ -2468,7 +2601,8 @@ def pairwise_distance_matrix(X: np.ndarray, distance_metric: str) -> np.ndarray:
         return np.zeros((0, 0), dtype=float)
 
     if distance_metric == "cosine":
-        similarities = np.clip(X @ X.T, -1.0, 1.0)
+        X_norm = normalize_rows(np.asarray(X, dtype=float))
+        similarities = np.clip(X_norm @ X_norm.T, -1.0, 1.0)
         distances = 1.0 - similarities
         np.fill_diagonal(distances, 0.0)
         return distances
@@ -2557,8 +2691,10 @@ def get_matching_precomputed_galaxy_assets(guards: pd.DataFrame) -> Optional[tup
             "euclidean_kmeans_locked_group_weights": metric_meta.get("euclidean_kmeans_locked_group_weights"),
             "euclidean_kmeans_locked_group_order": metric_meta.get("euclidean_kmeans_locked_group_order"),
             "euclidean_kmeans_locked_k": metric_meta.get("euclidean_kmeans_locked_k"),
-            "euclidean_kmeans_locked_pca_variance_target": metric_meta.get("euclidean_kmeans_locked_pca_variance_target"),
             "euclidean_kmeans_locked_clip_zscore": metric_meta.get("euclidean_kmeans_locked_clip_zscore"),
+            "euclidean_kmeans_locked_pipeline": metric_meta.get("pipeline"),
+            "euclidean_kmeans_locked_similarity_distance_metric": metric_meta.get("similarity_distance_metric"),
+            "euclidean_kmeans_locked_luka_override_metric": metric_meta.get("euclidean_kmeans_locked_luka_euclidean_override_metric"),
         }
         raw_legacy_signature = json.dumps(legacy_signature_payload, sort_keys=True).encode("utf-8")
         precomputed_signature = hashlib.sha256(raw_legacy_signature).hexdigest()
@@ -2675,6 +2811,7 @@ def build_similarity_block_details(
     block_slices: Dict[str, Dict[str, int]],
     source_index: int,
     target_index: int,
+    distance_metric: str = EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
 ) -> Dict[str, object]:
     candidate_indices = get_similarity_candidate_indices(guards, source_index)
     block_scores: Dict[str, Dict[str, float]] = {}
@@ -2688,11 +2825,21 @@ def build_similarity_block_details(
 
         source_vector = X_metric[int(source_index), start_index:end_index]
         target_vector = X_metric[int(target_index), start_index:end_index]
-        distance_value = float(np.linalg.norm(source_vector - target_vector))
+        if distance_metric == "cosine":
+            source_norm = normalize_rows(source_vector.reshape(1, -1))[0]
+            target_norm = normalize_rows(target_vector.reshape(1, -1))[0]
+            distance_value = float(1.0 - np.clip(np.dot(source_norm, target_norm), -1.0, 1.0))
+        else:
+            distance_value = float(np.linalg.norm(source_vector - target_vector))
 
         if candidate_indices.size:
             candidate_matrix = X_metric[candidate_indices, start_index:end_index]
-            candidate_distances = np.linalg.norm(candidate_matrix - source_vector.reshape(1, -1), axis=1)
+            if distance_metric == "cosine":
+                source_norm = normalize_rows(source_vector.reshape(1, -1))[0]
+                candidate_norms = normalize_rows(candidate_matrix)
+                candidate_distances = 1.0 - np.clip(candidate_norms @ source_norm, -1.0, 1.0)
+            else:
+                candidate_distances = np.linalg.norm(candidate_matrix - source_vector.reshape(1, -1), axis=1)
             sigma_value = safe_similarity_sigma(candidate_distances)
         else:
             sigma_value = 1.0
@@ -2732,6 +2879,8 @@ def build_similarity_edges_for_galaxy(
     top_n: int,
     X_metric: Optional[np.ndarray] = None,
     block_slices: Optional[Dict[str, Dict[str, int]]] = None,
+    default_similarity_metric: str = EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
+    euclidean_override_distance_matrix: Optional[np.ndarray] = None,
 ) -> List[Dict[str, object]]:
     player_key_array = guards["player_key"].astype(str).to_numpy()
     player_name_array = guards["Player Name"].astype(str).to_numpy()
@@ -2746,19 +2895,33 @@ def build_similarity_edges_for_galaxy(
     row_count = int(len(player_key_array))
 
     for source_index in range(row_count):
+        source_uses_euclidean_override = (
+            normalized_name_array[int(source_index)] == LUKA_DONCIC_SIMILARITY_OVERRIDE_KEY
+            and euclidean_override_distance_matrix is not None
+        )
+        source_distance_metric = (
+            LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC
+            if source_uses_euclidean_override
+            else default_similarity_metric
+        )
+        source_distance_matrix = (
+            euclidean_override_distance_matrix
+            if source_uses_euclidean_override
+            else distance_matrix
+        )
         candidate_mask = normalized_name_array != normalized_name_array[int(source_index)]
         candidate_mask[int(source_index)] = False
         candidate_indices = np.where(candidate_mask)[0]
         if candidate_indices.size == 0:
             continue
 
-        source_distances = distance_matrix[source_index, candidate_indices]
+        source_distances = source_distance_matrix[source_index, candidate_indices]
         order = np.argsort(source_distances, kind="stable")[:top_n]
         selected_indices = candidate_indices[order]
         sigma_value = safe_similarity_sigma(source_distances)
 
         for rank_index, target_index in enumerate(selected_indices, start=1):
-            distance_value = float(distance_matrix[source_index, target_index])
+            distance_value = float(source_distance_matrix[source_index, target_index])
             block_detail_payload: Dict[str, object] = {
                 "block_scores": {},
                 "strongest_similarity_blocks": "",
@@ -2771,6 +2934,7 @@ def build_similarity_edges_for_galaxy(
                     block_slices=block_slices,
                     source_index=int(source_index),
                     target_index=int(target_index),
+                    distance_metric=source_distance_metric,
                 )
 
             edges.append(
@@ -2787,6 +2951,8 @@ def build_similarity_edges_for_galaxy(
                     "target_position": str(position_array[target_index]),
                     "rank": int(rank_index),
                     "truth_distance": round(distance_value, 6),
+                    "similarity_distance_metric": source_distance_metric,
+                    "similarity_metric_used": source_distance_metric,
                     "similarity_score": round(convert_truth_distance_to_similarity_score(distance_value, sigma_value), 1),
                     "same_cluster": bool(labels[source_index] == labels[target_index]),
                     "source_cluster": int(labels[source_index]),
@@ -2954,7 +3120,22 @@ def build_galaxy_payload(
     metric_meta: Optional[Dict[str, object]] = None,
     include_block_details: bool = False,
 ) -> Dict[str, object]:
-    distance_matrix = pairwise_distance_matrix(X_metric, "euclidean")
+    similarity_distance_metric = (
+        str(metric_meta.get("similarity_distance_metric", metric_meta.get("distance_metric", distance_metric)))
+        if metric_meta is not None
+        else distance_metric
+    )
+    distance_matrix = pairwise_distance_matrix(X_metric, similarity_distance_metric)
+    euclidean_override_names = []
+    if metric_meta is not None:
+        raw_override_names = metric_meta.get("euclidean_kmeans_locked_luka_euclidean_override_names", [])
+        if isinstance(raw_override_names, list):
+            euclidean_override_names = [str(name) for name in raw_override_names]
+    euclidean_override_distance_matrix = (
+        pairwise_distance_matrix(X_metric, LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC)
+        if euclidean_override_names
+        else None
+    )
     block_slices = None
     if metric_meta is not None and (include_block_details or bool(display_meta.get("precomputed", False))):
         # Block-level edge details are expensive to compute live and should come
@@ -2971,6 +3152,8 @@ def build_galaxy_payload(
         top_n=GALAXY_SIMILAR_PLAYER_COUNT,
         X_metric=X_metric,
         block_slices=block_slices,
+        default_similarity_metric=similarity_distance_metric,
+        euclidean_override_distance_matrix=euclidean_override_distance_matrix,
     )
     cluster_edges = build_cluster_constellation_edges_for_galaxy(
         guards=guards,
@@ -2980,7 +3163,13 @@ def build_galaxy_payload(
     )
     return {
         "enabled": True,
-        "truth_space": "blocked_pca_090_weighted_euclidean" if is_locked_euclidean_kmeans_request(algorithm, distance_metric) else "active_metric_space",
+        "truth_space": (
+            str(metric_meta.get("space_transform", EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM))
+            if is_locked_euclidean_kmeans_request(algorithm, distance_metric) and metric_meta is not None
+            else "active_metric_space"
+        ),
+        "similarity_distance_metric": similarity_distance_metric,
+        "euclidean_override_player_names": euclidean_override_names,
         "display_space": display_meta,
         "similar_player_count": int(GALAXY_SIMILAR_PLAYER_COUNT),
         "same_cluster_knn_count": int(GALAXY_CLUSTER_KNN_COUNT),
@@ -3109,7 +3298,9 @@ def prepare_cluster_runtime(
             )
             memberships = np.eye(k, dtype=float)[raw_labels]
             algorithm_meta = {
-                "kmeans_variant": "locked_precomputed_blocked_euclidean_assignments",
+                "kmeans_variant": "locked_precomputed_raw_equal_block_assignments",
+                "similarity_pipeline": EUCLIDEAN_KMEANS_LOCKED_PIPELINE,
+                "similarity_distance_metric": EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
                 "kmeans_random_state": None,
                 "kmeans_n_init": None,
                 "kmeans_iterations_run": 0,
@@ -3805,12 +3996,14 @@ def build_similar_players_response_from_galaxy(player_name: str, season: str) ->
         }
         target_index = row_index_by_key.get(target_key)
         if source_index is not None and target_index is not None and block_slices:
+            edge_distance_metric = str(edge.get("similarity_distance_metric", EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC))
             block_detail_payload = build_similarity_block_details(
                 guards=guards,
                 X_metric=X_metric,
                 block_slices=block_slices,
                 source_index=int(source_index),
                 target_index=int(target_index),
+                distance_metric=edge_distance_metric,
             )
 
         related_cluster_number = int(target_point.get("cluster", 0) or 0)
@@ -3830,6 +4023,8 @@ def build_similar_players_response_from_galaxy(player_name: str, season: str) ->
                 **get_player_headshot_payload(target_point.get("player_name", "")),
                 "similarity_score": float(edge.get("similarity_score", 0.0) or 0.0),
                 "overall_distance": float(edge.get("truth_distance", 0.0) or 0.0),
+                "similarity_distance_metric": str(edge.get("similarity_distance_metric", EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC)),
+                "similarity_metric_used": str(edge.get("similarity_metric_used", edge.get("similarity_distance_metric", EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC))),
                 "same_cluster": bool(edge.get("same_cluster", False)),
                 "same_archetype": bool(edge.get("same_cluster", False)),
                 "strongest_similarity_blocks": block_detail_payload.get("strongest_similarity_blocks", ""),
@@ -4622,6 +4817,8 @@ def similar_players(
                 **get_player_headshot_payload(row_string(row, "related_player_name")),
                 "similarity_score": row_float(row, "overall_similarity_score"),
                 "overall_distance": row_float(row, "overall_distance"),
+                "similarity_distance_metric": row_string(row, "similarity_distance_metric", EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC),
+                "similarity_metric_used": row_string(row, "similarity_metric_used", row_string(row, "similarity_distance_metric", EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC)),
                 "same_cluster": parse_bool_value(row["same_cluster"]) if "same_cluster" in row.index else False,
                 "same_archetype": parse_bool_value(row["same_archetype"]) if "same_archetype" in row.index else False,
                 "strongest_similarity_blocks": row_string(row, "strongest_similarity_blocks"),
@@ -4681,7 +4878,10 @@ def get_config():
         "euclidean_kmeans_locked_features_raw": get_locked_euclidean_kmeans_feature_columns(raw=True),
         "euclidean_kmeans_locked_feature_groups": EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES,
         "euclidean_kmeans_locked_group_weights": EUCLIDEAN_KMEANS_LOCKED_GROUP_WEIGHTS,
-        "euclidean_kmeans_locked_pca_variance_target": EUCLIDEAN_KMEANS_LOCKED_PCA_VARIANCE_TARGET,
+        "euclidean_kmeans_locked_pipeline": EUCLIDEAN_KMEANS_LOCKED_PIPELINE,
+        "euclidean_kmeans_locked_space_transform": EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM,
+        "euclidean_kmeans_locked_similarity_distance_metric": EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
+        "euclidean_kmeans_locked_luka_euclidean_override_metric": LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC,
         "galaxy_similar_player_count": GALAXY_SIMILAR_PLAYER_COUNT,
         "galaxy_cluster_knn_count": GALAXY_CLUSTER_KNN_COUNT,
         "euclidean_kmeans_cluster_name_by_number": EUCLIDEAN_KMEANS_CLUSTER_NAME_BY_NUMBER,

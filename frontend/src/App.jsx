@@ -1605,18 +1605,18 @@ function SimilarPlayersView({
             </header>
             <div className="similarity-methodology-page-body">
               <p className="similarity-page-copy">
-                The similarity calculations are performed via blocked-Euclidean distance calculations on the <span className="universe-cyan-text">full post blocked-PCA space</span>.
+                The similarity calculations are performed on the <span className="universe-cyan-text">raw equal-block weighted feature space</span>: per-game volume features where applicable, season-median imputation, same-season guard standardization, ±3.50 z-score clipping, and no PCA.
               </p>
               <UniverseAccordion
-                title="Why Blocked-Euclidean?"
+                title="Why Equal Blocks?"
                 open={blockedEuclideanOpen}
                 onToggle={() => setBlockedEuclideanOpen((previousValue) => !previousValue)}
               >
                 <p>
-                  Due to the heavy usage of possession-level frequency features, I found Euclidean distance to perform worse unless the raw feature space is first normalized, clipped, and compressed into the locked PCA blocks used here.
+                  The model compares guards across five basketball blocks: Three-Point Shooting, Midrange Scoring, Rim Pressure, Playmaking, and Defense. Each block receives 20% of the final vector weight, so no single area of the game can dominate the similarity calculation.
                 </p>
                 <p className="similarity-blocked-part-copy">
-                  The blocked part comes from the features being separated into blocks: Three-Point Shooting, Midrange Scoring, Rim Pressure, Playmaking, and Defense. PCA is applied within each block, and each block is weighted equally before distance is calculated. Blocking and possession-level features avoids comparing raw box-score numbers without context.
+                  Similarity uses cosine distance by default on this transformed raw feature space. Luka Doncic player comps use the same pipeline but rank nearest neighbors with Euclidean distance.
                 </p>
               </UniverseAccordion>
             </div>
@@ -2795,7 +2795,7 @@ function MethodologyModal({ open, onClose }) {
                 Nearby points are statistically similar player-seasons, cluster colors represent different <span className="universe-cyan-text">archetypes</span>, and <span className="universe-cyan-text">constellation lines</span> show nearest-player relationships in my full blocked-feature space.
               </p>
               <p>
-                The Galaxy does the best job it can in preserving my <span className="universe-cyan-text">58-D feature space</span> in just <span className="universe-cyan-text">three dimensions</span>. This UMAP 3D Embedding is just for visual interpretation, while the actual similarity rankings are still performed via blocked-Euclidean distance calculations on the full transformed feature space.
+                The Galaxy does the best job it can in preserving my <span className="universe-cyan-text">58-D feature space</span> in just <span className="universe-cyan-text">three dimensions</span>. This UMAP 3D Embedding is just for visual interpretation, while the actual similarity rankings are performed on the updated raw equal-block weighted feature space.
               </p>
             </section>
 
