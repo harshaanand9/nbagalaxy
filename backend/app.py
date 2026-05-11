@@ -183,9 +183,12 @@ EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES = {
         "tight_very_tight_2fga_accuracy",
         "open_2fga_per_game",
         "open_2fga_accuracy",
+        "pull_up_2PA_per_game",
+        "pull_up_2P_accuracy",
         "Avg2ptShotDistance",
         "pct_fga_MR",
         "pts_from_midrange_per_75",
+        "pct_2p_fg_assisted",
     ],
     "RimPressure": [
         "restricted_area_fga_per_game",
@@ -238,8 +241,8 @@ def build_locked_euclidean_feature_signature() -> str:
     raw_signature = json.dumps(signature_payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(raw_signature).hexdigest()
 EUCLIDEAN_KMEANS_LOCKED_K = 12
-EUCLIDEAN_KMEANS_LOCKED_PIPELINE = "per_game_raw43_equal_blocks_cosine_luka_euclidean"
-EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM = "season_median_imputed_guard_standardized_clipped_raw43_equal_blocks"
+EUCLIDEAN_KMEANS_LOCKED_PIPELINE = "per_game_raw46_equal_blocks_cosine_luka_euclidean"
+EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM = "season_median_imputed_guard_standardized_clipped_raw46_equal_blocks"
 EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC = "cosine"
 LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC = "euclidean"
 LUKA_DONCIC_SIMILARITY_OVERRIDE_KEY = "lukadoncic"
@@ -398,9 +401,14 @@ PLAYER_COMPS_PACE_PATH = os.environ.get(
     "PLAYER_COMPS_PACE_PATH",
     str(BACKEND_DATA_DIR / "league_average_pace_2016_17_to_2025_26.csv"),
 )
+PULLUP_DATASET_PATH = os.environ.get(
+    "PULLUP_DATASET_PATH",
+    "/Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_13_14_25_26_pullup.csv",
+)
 PLAYER_COMPS_TARGET_PACE_MODE = os.environ.get("PLAYER_COMPS_TARGET_PACE_MODE", "latest")
 DLEBRON_FEATURE = "D-LEBRON"
 _DLEBRON_SOURCE_CACHE: Dict[str, object] = {"path": None, "mtime_ns": None, "lookup": None}
+_PULLUP_SOURCE_CACHE: Dict[str, object] = {"path": None, "mtime_ns": None, "lookup": None}
 _PLAYER_COMPS_PERCENTILE_CACHE: Dict[str, object] = {"path": None, "mtime_ns": None, "payload": None}
 
 PLAYER_COMPS_LOWER_IS_BETTER_FEATURES = {
@@ -956,6 +964,64 @@ def load_player_comps_side_feature_lookup(feature_names: List[str]) -> Dict[str,
     return lookup
 
 
+def load_pullup_2pa_per_game_lookup() -> Dict[str, float]:
+    path = Path(PULLUP_DATASET_PATH).expanduser()
+    if not path.exists():
+        return {}
+
+    mtime_ns = path.stat().st_mtime_ns
+    cached_lookup = _PULLUP_SOURCE_CACHE.get("lookup")
+    if (
+        cached_lookup is not None
+        and _PULLUP_SOURCE_CACHE.get("path") == str(path)
+        and _PULLUP_SOURCE_CACHE.get("mtime_ns") == mtime_ns
+    ):
+        return cached_lookup  # type: ignore[return-value]
+
+    try:
+        source = pd.read_csv(path, low_memory=False)
+    except Exception:
+        return {}
+
+    required_columns = {"Player Name", "Season", "pullup_pull_up_fga", "pullup_pull_up_fg3a"}
+    if not required_columns.issubset(set(source.columns)):
+        return {}
+
+    compact = source[["Player Name", "Season", "pullup_pull_up_fga", "pullup_pull_up_fg3a"]].copy()
+    compact["_assignment_key"] = compact.apply(lambda row: build_assignment_key(row["Player Name"], row["Season"]), axis=1)
+    compact["pull_up_2PA_per_game"] = (
+        pd.to_numeric(compact["pullup_pull_up_fga"], errors="coerce")
+        - pd.to_numeric(compact["pullup_pull_up_fg3a"], errors="coerce")
+    ).clip(lower=0.0)
+    compact = compact.dropna(subset=["pull_up_2PA_per_game"])
+    compact = compact.drop_duplicates(subset=["_assignment_key"], keep="last")
+    lookup = {
+        str(row["_assignment_key"]): float(row["pull_up_2PA_per_game"])
+        for _, row in compact.iterrows()
+        if pd.notna(row["pull_up_2PA_per_game"])
+    }
+
+    _PULLUP_SOURCE_CACHE["path"] = str(path)
+    _PULLUP_SOURCE_CACHE["mtime_ns"] = mtime_ns
+    _PULLUP_SOURCE_CACHE["lookup"] = lookup
+    return lookup
+
+
+def attach_pullup_2pa_per_game(guards: pd.DataFrame) -> pd.DataFrame:
+    lookup = load_pullup_2pa_per_game_lookup()
+    if not lookup:
+        return guards
+
+    output = guards.copy()
+    if "pull_up_2PA_per_game" not in output.columns:
+        output["pull_up_2PA_per_game"] = np.nan
+
+    keys = output.apply(lambda row: build_assignment_key(row["Player Name"], row["Season"]), axis=1)
+    pullup_values = keys.map(lookup)
+    output["pull_up_2PA_per_game"] = pullup_values.fillna(pd.to_numeric(output["pull_up_2PA_per_game"], errors="coerce"))
+    return output
+
+
 def attach_player_comps_side_features(guards: pd.DataFrame, feature_names: List[str]) -> pd.DataFrame:
     lookup = load_player_comps_side_feature_lookup(feature_names)
     output = guards.copy()
@@ -992,6 +1058,8 @@ def add_locked_similarity_derived_features(guards: pd.DataFrame) -> pd.DataFrame
                 possession_series=output[possession_column],
                 gp_series=output["GP"],
             )
+
+    output = attach_pullup_2pa_per_game(output)
 
     if "hustle_contested_shots" in output.columns and "contested_shots_per_game" in output.columns:
         output["contested_shots_per_game"] = pd.to_numeric(output["contested_shots_per_game"], errors="coerce").fillna(

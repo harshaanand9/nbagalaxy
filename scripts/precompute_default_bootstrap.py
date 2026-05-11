@@ -25,6 +25,7 @@ import app as backend_app  # noqa: E402
 
 DEFAULT_DATASET = BACKEND_DIR / "data" / "fullseasonfeatures_16_17_25_26.csv"
 DEFAULT_DLEBRON_DATASET = BACKEND_DIR / "data" / "fullseasonfeatures_player_comps_real.csv"
+DEFAULT_PULLUP_DATASET = Path("/Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_13_14_25_26_pullup.csv")
 DEFAULT_OUTPUT = REPO_ROOT / "frontend" / "public" / "precomputed" / "default_bootstrap.json"
 
 
@@ -54,6 +55,11 @@ def parse_args() -> argparse.Namespace:
         help="Path to fullseasonfeatures_player_comps_real.csv",
     )
     parser.add_argument(
+        "--pullup-dataset",
+        default=str(first_existing_path([Path(backend_app.PULLUP_DATASET_PATH), DEFAULT_PULLUP_DATASET])),
+        help="Path to fullseasonfeatures_13_14_25_26_pullup.csv",
+    )
+    parser.add_argument(
         "--output",
         default=str(DEFAULT_OUTPUT),
         help="Static frontend JSON path to write.",
@@ -65,10 +71,12 @@ def main() -> None:
     args = parse_args()
     dataset_path = Path(args.dataset).expanduser().resolve()
     dlebron_dataset_path = Path(args.dlebron_dataset).expanduser().resolve()
+    pullup_dataset_path = Path(args.pullup_dataset).expanduser().resolve()
     output_path = Path(args.output).expanduser().resolve()
 
     backend_app.DEFAULT_DATASET_PATH = str(dataset_path)
     backend_app.PLAYER_COMPS_DATASET_PATH = str(dlebron_dataset_path)
+    backend_app.PULLUP_DATASET_PATH = str(pullup_dataset_path)
 
     algorithm = "kmeans"
     distance_metric = "euclidean"

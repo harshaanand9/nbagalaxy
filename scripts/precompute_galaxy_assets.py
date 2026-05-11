@@ -156,6 +156,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Precompute 3D galaxy assets for the locked KMeans website mode.")
     parser.add_argument("--dataset", default=DEFAULT_DATASET_PATH, help="Path to fullseasonfeatures_16_17_25_26.csv")
     parser.add_argument("--dlebron-dataset", default=backend_app.PLAYER_COMPS_DATASET_PATH, help="Path to fullseasonfeatures_player_comps_real.csv for D-LEBRON and passing side-loads")
+    parser.add_argument("--pullup-dataset", default=backend_app.PULLUP_DATASET_PATH, help="Path to fullseasonfeatures_13_14_25_26_pullup.csv for pull-up 2PA/game side-loads")
     parser.add_argument("--output-dir", default=str(BACKEND_DATA_DIR), help="Directory to write precomputed assets")
     parser.add_argument("--refresh-display-coordinates", action="store_true", help="Recompute the 3D display coordinates instead of preserving the existing embedding")
     args = parser.parse_args()
@@ -163,6 +164,7 @@ def main() -> None:
     output_dir = Path(args.output_dir).expanduser().resolve()
     galaxy_output_path = output_dir / "galaxy_precomputed.json"
     backend_app.PLAYER_COMPS_DATASET_PATH = str(Path(args.dlebron_dataset).expanduser().resolve())
+    backend_app.PULLUP_DATASET_PATH = str(Path(args.pullup_dataset).expanduser().resolve())
     dataset_meta = load_base_dataframe(args.dataset)
     base_guards = dataset_meta["guards"].copy()
 
