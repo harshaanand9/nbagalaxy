@@ -11,6 +11,7 @@
     "badges:build": "cd .. && python3 scripts/build_badge_assets.py"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "plotly.js-dist-min": "^3.0.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
