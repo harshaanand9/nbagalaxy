@@ -1716,9 +1716,9 @@ function PentagonSkillRadar({ title, eyebrow, scores = {}, color = CLUSTER_COLOR
   const width = 360;
   const height = 360;
   const center = width / 2;
-  const maxRadius = axes.length <= 3 ? 82 : 88;
-  const labelRadius = axes.length <= 3 ? 136 : 132;
   const axisCount = axes.length;
+  const maxRadius = axisCount <= 3 ? 116 : axisCount > 5 ? 126 : 130;
+  const labelRadius = axisCount <= 3 ? 154 : axisCount > 5 ? 164 : 162;
 
   const polarPoint = (axisIndex, radius) => {
     const angle = -Math.PI / 2 + (axisIndex * 2 * Math.PI) / axisCount;
@@ -1740,7 +1740,7 @@ function PentagonSkillRadar({ title, eyebrow, scores = {}, color = CLUSTER_COLOR
   const safeTitle = String(title ?? "radar").replace(/[^a-z0-9]/gi, "-");
 
   return (
-    <article className="skill-radar-card" style={{ "--skill-color": color, "--skill-color-soft": hexToRgba(color, 0.18) }}>
+    <article className={`skill-radar-card ${axes.length > 5 ? "skill-radar-card-dense" : ""}`} style={{ "--skill-color": color, "--skill-color-soft": hexToRgba(color, 0.18) }}>
       <div className="skill-radar-card-header">
         <div className="skill-radar-eyebrow">{eyebrow}</div>
         <div className="skill-radar-title">{title}</div>
