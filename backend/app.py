@@ -29,7 +29,7 @@ except ImportError:
     )
 
 
-APP_VERSION = "0.22.0"
+APP_VERSION = "0.23.0"
 BACKEND_DIR = Path(__file__).resolve().parent
 BACKEND_DATA_DIR = BACKEND_DIR / "data"
 DEFAULT_DATASET_PATH = os.environ.get(
