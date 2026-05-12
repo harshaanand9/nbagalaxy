@@ -209,6 +209,12 @@ EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES = {
         "crafted_passer_rating",
         "pts_created_from_assists",
         "potential_assists_and_ft_assists",
+        "ASSISTS_ON_OFF",
+        "EFG_PCT_ON_OFF",
+        "assists_tov_ratio",
+        "potential_assist_tov_ratio",
+        "THREE_PT_FG_PCT_ON_OFF",
+        "PTS_PER_100_ON_OFF",
     ],
     "Defense": [
         "D-LEBRON",
@@ -241,8 +247,8 @@ def build_locked_euclidean_feature_signature() -> str:
     raw_signature = json.dumps(signature_payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(raw_signature).hexdigest()
 EUCLIDEAN_KMEANS_LOCKED_K = 12
-EUCLIDEAN_KMEANS_LOCKED_PIPELINE = "per_game_raw46_equal_blocks_cosine_luka_euclidean"
-EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM = "season_median_imputed_guard_standardized_clipped_raw46_equal_blocks"
+EUCLIDEAN_KMEANS_LOCKED_PIPELINE = "per_game_raw52_equal_blocks_cosine_luka_euclidean"
+EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM = "season_median_imputed_guard_standardized_clipped_raw52_equal_blocks"
 EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC = "cosine"
 LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC = "euclidean"
 LUKA_DONCIC_SIMILARITY_OVERRIDE_KEY = "lukadoncic"
