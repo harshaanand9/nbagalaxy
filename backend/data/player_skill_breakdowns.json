@@ -7,7 +7,7 @@
     "distance_metric": "euclidean",
     "k": 12,
     "feature_signature": "d5fe32a824ba417f71a000fd755d7b076c2258a6113cfffd5b3129d1562e27e9",
-    "created_at": "2026-05-13T00:43:52.052708+00:00",
+    "created_at": "2026-05-13T00:57:00.387407+00:00",
     "precompute_script": "scripts/precompute_player_breakdowns.py"
   },
   "player_count": 1405,

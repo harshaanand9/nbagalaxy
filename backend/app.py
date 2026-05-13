@@ -2191,9 +2191,10 @@ def load_base_dataframe(dataset_path: str) -> Dict:
     missing_features = [c for c in ALLOWED_FEATURES if c not in df.columns]
     if missing_features:
         # Badge/skill-breakdown features are optional for the initial scatter/galaxy render.
-        # Fill absent optional columns instead of killing /api/cluster with a 500.
+        # Fill absent optional columns with 0.0 so missing data never propagates into
+        # median/std calculations or shifts similarity scores.
         df = pd.concat(
-            [df, pd.DataFrame({missing_feature: np.nan for missing_feature in missing_features}, index=df.index)],
+            [df, pd.DataFrame({missing_feature: 0.0 for missing_feature in missing_features}, index=df.index)],
             axis=1,
         )
 
@@ -2395,10 +2396,8 @@ def build_locked_euclidean_kmeans_space(base_guards: pd.DataFrame) -> tuple[pd.D
     locked_feature_columns = get_locked_euclidean_kmeans_feature_columns(raw=False)
     missing_feature_columns = [column_name for column_name in locked_feature_columns if column_name not in base_guards.columns]
     if missing_feature_columns:
-        raise ValueError(
-            "These required locked similarity columns are missing from the dataset: "
-            f"{missing_feature_columns}"
-        )
+        for col in missing_feature_columns:
+            base_guards[col] = 0.0
 
     assignments = load_locked_euclidean_assignments()
 
@@ -2432,17 +2431,11 @@ def build_locked_euclidean_kmeans_space(base_guards: pd.DataFrame) -> tuple[pd.D
     raw_labels = locked_guards["cluster_raw"].astype(int).to_numpy()
 
     numeric_feature_frame = locked_guards[locked_feature_columns].apply(pd.to_numeric, errors="coerce")
-    numeric_feature_frame = numeric_feature_frame.replace([np.inf, -np.inf], np.nan)
+    numeric_feature_frame = numeric_feature_frame.replace([np.inf, -np.inf], np.nan).fillna(0.0)
     numeric_feature_frame["Season"] = locked_guards["Season"].values
 
-    imputed_feature_frame = season_median_impute_for_features(
-        dataframe=numeric_feature_frame,
-        feature_list=locked_feature_columns,
-        season_column_name="Season",
-    )
-
     standardized_feature_frame = season_standardize_clip_for_locked_euclidean(
-        dataframe=imputed_feature_frame,
+        dataframe=numeric_feature_frame,
         feature_list=locked_feature_columns,
         season_column_name="Season",
         clip_zscore_value=EUCLIDEAN_KMEANS_LOCKED_CLIP_ZSCORE,

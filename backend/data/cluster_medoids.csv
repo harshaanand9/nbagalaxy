@@ -1,13 +1,13 @@
 cluster,cluster_name,player_key,player_name,season,teams_played,position,mean_truth_distance
-1,3PT-Reliant Sharpshooter,Alex Abrines||2016-17||OKC||SG,Alex Abrines,2016-17,OKC,SG,0.430602
-2,"Slashing Oriented, Scoring + Playmaking Threat",De'Aaron Fox||2019-20||SAC||PG,De'Aaron Fox,2019-20,SAC,PG,0.544747
-3,3PT Oriented Lock-Down Secondary Handler,Marcus Smart||2018-19||BOS||SG,Marcus Smart,2018-19,BOS,SG,0.544115
-4,Expanded Role Sharpshooter,Bryn Forbes||2020-21||MIL||SG,Bryn Forbes,2020-21,MIL,SG,0.415455
-5,Playmaking and 3PT Spark Plug,Collin Gillespie||2025-26||PHX||PG,Collin Gillespie,2025-26,PHX,PG,0.758586
-6,3-Level Scoring and Playmaking Machine,Damian Lillard||2020-21||POR||PG,Damian Lillard,2020-21,POR,PG,0.299811
-7,Talented Pass-First Point,Tyus Jones||2018-19||MIN||PG,Tyus Jones,2018-19,MIN,PG,0.535287
-8,Limited Playmaking Spark Plug,Lonnie Walker IV||2022-23||LAL||SG,Lonnie Walker IV,2022-23,LAL,SG,0.664512
-9,Inside-the-Arc Scoring and Playmaking Machine,Dejounte Murray||2021-22||SAS||PG,Dejounte Murray,2021-22,SAS,PG,0.334183
-10,Streaky Shooting Defensive Savant,"Ochai Agbaji||2023-24||TOR,UTA||SG",Ochai Agbaji,2023-24,"TOR,UTA",SG,0.431971
-11,Slashing Oriented Lock-Down Point,Dennis Smith Jr.||2022-23||CHA||PG,Dennis Smith Jr.,2022-23,CHA,PG,0.525151
-12,3-Level Scoring Machine,Tyler Herro||2021-22||MIA||SG,Tyler Herro,2021-22,MIA,SG,0.479563
+1,3PT-Reliant Sharpshooter,Furkan Korkmaz||2019-20||PHI||SG,Furkan Korkmaz,2019-20,PHI,SG,0.402983
+2,"Slashing Oriented, Scoring + Playmaking Threat",De'Aaron Fox||2019-20||SAC||PG,De'Aaron Fox,2019-20,SAC,PG,0.535884
+3,3PT Oriented Lock-Down Secondary Handler,Marcus Smart||2018-19||BOS||SG,Marcus Smart,2018-19,BOS,SG,0.544238
+4,Expanded Role Sharpshooter,Bryn Forbes||2020-21||MIL||SG,Bryn Forbes,2020-21,MIL,SG,0.410646
+5,Playmaking and 3PT Spark Plug,Collin Gillespie||2025-26||PHX||PG,Collin Gillespie,2025-26,PHX,PG,0.756901
+6,3-Level Scoring and Playmaking Machine,Damian Lillard||2020-21||POR||PG,Damian Lillard,2020-21,POR,PG,0.29604
+7,Talented Pass-First Point,Tyus Jones||2018-19||MIN||PG,Tyus Jones,2018-19,MIN,PG,0.519144
+8,Limited Playmaking Spark Plug,Lonnie Walker IV||2022-23||LAL||SG,Lonnie Walker IV,2022-23,LAL,SG,0.650154
+9,Inside-the-Arc Scoring and Playmaking Machine,Dejounte Murray||2021-22||SAS||PG,Dejounte Murray,2021-22,SAS,PG,0.329084
+10,Streaky Shooting Defensive Savant,"Javonte Green||2024-25||CLE,NOP||SG",Javonte Green,2024-25,"CLE,NOP",SG,0.412042
+11,Slashing Oriented Lock-Down Point,Dennis Smith Jr.||2022-23||CHA||PG,Dennis Smith Jr.,2022-23,CHA,PG,0.518296
+12,3-Level Scoring Machine,Tyler Herro||2021-22||MIA||SG,Tyler Herro,2021-22,MIA,SG,0.466373

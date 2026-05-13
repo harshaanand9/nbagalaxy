@@ -2,97 +2,97 @@
   {
     "cluster": 1,
     "cluster_name": "3PT-Reliant Sharpshooter",
-    "x": -0.607283,
-    "y": -0.276835,
-    "z": -0.088024,
+    "x": -0.615279,
+    "y": -0.287574,
+    "z": -0.087147,
     "player_count": 137
   },
   {
     "cluster": 2,
     "cluster_name": "Slashing Oriented, Scoring + Playmaking Threat",
-    "x": 0.366498,
-    "y": 0.194775,
-    "z": -0.004107,
+    "x": 0.369372,
+    "y": 0.195662,
+    "z": -0.005524,
     "player_count": 141
   },
   {
     "cluster": 3,
     "cluster_name": "3PT Oriented Lock-Down Secondary Handler",
-    "x": -0.337412,
-    "y": 0.175817,
-    "z": -0.228595,
+    "x": -0.339854,
+    "y": 0.178373,
+    "z": -0.230853,
     "player_count": 97
   },
   {
     "cluster": 4,
     "cluster_name": "Expanded Role Sharpshooter",
-    "x": -0.227693,
-    "y": -0.482043,
-    "z": 0.148646,
+    "x": -0.222239,
+    "y": -0.490355,
+    "z": 0.147693,
     "player_count": 111
   },
   {
     "cluster": 5,
     "cluster_name": "Playmaking and 3PT Spark Plug",
-    "x": 0.061025,
-    "y": -0.100189,
-    "z": -0.102344,
+    "x": 0.066848,
+    "y": -0.099919,
+    "z": -0.109921,
     "player_count": 145
   },
   {
     "cluster": 6,
     "cluster_name": "3-Level Scoring and Playmaking Machine",
-    "x": 0.715079,
-    "y": -0.186727,
-    "z": -0.35929,
+    "x": 0.719338,
+    "y": -0.185427,
+    "z": -0.358934,
     "player_count": 86
   },
   {
     "cluster": 7,
     "cluster_name": "Talented Pass-First Point",
-    "x": 0.176048,
-    "y": 0.230272,
-    "z": -0.047081,
+    "x": 0.172626,
+    "y": 0.252969,
+    "z": -0.052446,
     "player_count": 104
   },
   {
     "cluster": 8,
     "cluster_name": "Limited Playmaking Spark Plug",
-    "x": -0.221566,
-    "y": -0.01853,
-    "z": 0.089078,
+    "x": -0.216644,
+    "y": -0.031622,
+    "z": 0.089614,
     "player_count": 182
   },
   {
     "cluster": 9,
     "cluster_name": "Inside-the-Arc Scoring and Playmaking Machine",
-    "x": 0.780506,
-    "y": 0.072315,
-    "z": 0.261689,
+    "x": 0.781561,
+    "y": 0.084239,
+    "z": 0.267052,
     "player_count": 79
   },
   {
     "cluster": 10,
     "cluster_name": "Streaky Shooting Defensive Savant",
-    "x": -0.644536,
-    "y": 0.358831,
-    "z": 0.02105,
+    "x": -0.669619,
+    "y": 0.368713,
+    "z": 0.033341,
     "player_count": 91
   },
   {
     "cluster": 11,
     "cluster_name": "Slashing Oriented Lock-Down Point",
-    "x": -0.069454,
-    "y": 0.516791,
-    "z": 0.087089,
+    "x": -0.071351,
+    "y": 0.52332,
+    "z": 0.084268,
     "player_count": 99
   },
   {
     "cluster": 12,
     "cluster_name": "3-Level Scoring Machine",
-    "x": 0.338825,
-    "y": -0.245136,
-    "z": 0.161842,
+    "x": 0.34603,
+    "y": -0.249613,
+    "z": 0.166877,
     "player_count": 133
   }
 ]
