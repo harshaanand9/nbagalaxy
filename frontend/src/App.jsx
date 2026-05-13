@@ -2920,6 +2920,66 @@ function MethodologyModal({ open, onClose }) {
   );
 }
 
+function WelcomeModal() {
+  const STORAGE_KEY = "nbagalaxy:welcomeDismissed";
+  const [visible, setVisible] = useState(() => !sessionStorage.getItem(STORAGE_KEY));
+
+  function dismiss() {
+    sessionStorage.setItem(STORAGE_KEY, "1");
+    setVisible(false);
+  }
+
+  if (!visible) return null;
+
+  return (
+    <div className="welcome-overlay" onClick={dismiss}>
+      <div className="welcome-card" onClick={(e) => e.stopPropagation()}>
+        <canvas className="welcome-stars-canvas" ref={(canvas) => {
+          if (!canvas) return;
+          const ctx = canvas.getContext("2d");
+          const W = canvas.width = canvas.offsetWidth;
+          const H = canvas.height = canvas.offsetHeight;
+          const stars = Array.from({ length: 80 }, () => ({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            r: Math.random() * 1.2 + 0.3,
+            phase: Math.random() * Math.PI * 2,
+            speed: 0.4 + Math.random() * 0.8,
+          }));
+          let frame;
+          function draw(t) {
+            ctx.clearRect(0, 0, W, H);
+            stars.forEach((s) => {
+              const alpha = 0.08 + 0.12 * Math.sin(t * 0.001 * s.speed + s.phase);
+              ctx.beginPath();
+              ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+              ctx.fillStyle = `rgba(223, 243, 244, ${alpha})`;
+              ctx.fill();
+            });
+            frame = requestAnimationFrame(draw);
+          }
+          frame = requestAnimationFrame(draw);
+          canvas._cleanup = () => cancelAnimationFrame(frame);
+        }} />
+
+        <button className="welcome-close" onClick={dismiss} aria-label="Close">✕</button>
+
+        <p className="welcome-headline">This website is best viewed from a computer.</p>
+
+        <div className="welcome-icon">
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
+        </div>
+
+        <p className="welcome-subline">Wings + Bigs will be added soon!</p>
+      </div>
+    </div>
+  );
+}
+
 function ReadMeModal({ open, onClose }) {
   const [openSections, setOpenSections] = useState({});
 
@@ -6315,6 +6375,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <WelcomeModal />
       <div className="grid-bg" />
       {startupLoaderVisible && (
         <div className="startup-loading-screen" aria-live="polite" role="status">
