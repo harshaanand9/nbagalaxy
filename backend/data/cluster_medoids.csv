@@ -1,13 +1,13 @@
 cluster,cluster_name,player_key,player_name,season,teams_played,position,mean_truth_distance
-1,3PT-Reliant Sharpshooter,"Landry Shamet||2018-19||LAC,PHI||SG",Landry Shamet,2018-19,"LAC,PHI",SG,0.412879
-2,"Slashing Oriented, Scoring + Playmaking Threat",Dennis Schroder||2016-17||ATL||PG,Dennis Schroder,2016-17,ATL,PG,0.57443
-3,3PT Oriented Lock-Down Secondary Handler,Donte DiVincenzo||2022-23||GSW||SG,Donte DiVincenzo,2022-23,GSW,SG,0.546003
-4,Expanded Role Sharpshooter,JJ Redick||2018-19||PHI||SG,JJ Redick,2018-19,PHI,SG,0.432883
-5,Playmaking and 3PT Spark Plug,Cam Spencer||2025-26||MEM||SG,Cam Spencer,2025-26,MEM,SG,0.77371
-6,3-Level Scoring and Playmaking Machine,Trae Young||2019-20||ATL||PG,Trae Young,2019-20,ATL,PG,0.322858
-7,Talented Pass-First Point,Tyus Jones||2018-19||MIN||PG,Tyus Jones,2018-19,MIN,PG,0.505744
-8,Limited Playmaking Spark Plug,Frank Jackson||2018-19||NOP||PG,Frank Jackson,2018-19,NOP,PG,0.64003
-9,Inside-the-Arc Scoring and Playmaking Machine,Shai Gilgeous-Alexander||2025-26||OKC||PG,Shai Gilgeous-Alexander,2025-26,OKC,PG,0.362486
-10,Streaky Shooting Defensive Savant,"Ochai Agbaji||2023-24||TOR,UTA||SG",Ochai Agbaji,2023-24,"TOR,UTA",SG,0.396876
-11,Slashing Oriented Lock-Down Point,Shaquille Harrison||2018-19||CHI||SG,Shaquille Harrison,2018-19,CHI,SG,0.512105
-12,3-Level Scoring Machine,Anthony Edwards||2025-26||MIN||SG,Anthony Edwards,2025-26,MIN,SG,0.466387
+1,3PT-Reliant Sharpshooter,Furkan Korkmaz||2019-20||PHI||SG,Furkan Korkmaz,2019-20,PHI,SG,0.438964
+2,"Slashing Oriented, Scoring + Playmaking Threat",Ja Morant||2024-25||MEM||PG,Ja Morant,2024-25,MEM,PG,0.577634
+3,3PT Oriented Lock-Down Secondary Handler,Marcus Smart||2018-19||BOS||SG,Marcus Smart,2018-19,BOS,SG,0.5251
+4,Expanded Role Sharpshooter,JJ Redick||2018-19||PHI||SG,JJ Redick,2018-19,PHI,SG,0.409042
+5,Playmaking and 3PT Spark Plug,Collin Gillespie||2025-26||PHX||PG,Collin Gillespie,2025-26,PHX,PG,0.756513
+6,3-Level Scoring and Playmaking Machine,Damian Lillard||2016-17||POR||PG,Damian Lillard,2016-17,POR,PG,0.339277
+7,Talented Pass-First Point,Tyus Jones||2018-19||MIN||PG,Tyus Jones,2018-19,MIN,PG,0.544688
+8,Limited Playmaking Spark Plug,Lonnie Walker IV||2022-23||LAL||SG,Lonnie Walker IV,2022-23,LAL,SG,0.698761
+9,Inside-the-Arc Scoring and Playmaking Machine,T.J. McConnell||2025-26||IND||PG,T.J. McConnell,2025-26,IND,PG,0.340983
+10,Streaky Shooting Defensive Savant,Andre Roberson||2017-18||OKC||SG,Andre Roberson,2017-18,OKC,SG,0.451404
+11,Slashing Oriented Lock-Down Point,Shaquille Harrison||2018-19||CHI||SG,Shaquille Harrison,2018-19,CHI,SG,0.497995
+12,3-Level Scoring Machine,Devin Booker||2017-18||PHX||SG,Devin Booker,2017-18,PHX,SG,0.459359

@@ -1613,10 +1613,10 @@ function SimilarPlayersView({
                 onToggle={() => setBlockedEuclideanOpen((previousValue) => !previousValue)}
               >
                 <p>
-                  The model compares guards across five basketball blocks: Three-Point Shooting, Midrange Scoring, Rim Pressure, Playmaking, and Defense. Each block receives 20% of the final vector weight, so no single area of the game can dominate the similarity calculation.
+                  The model compares guards across six basketball blocks: Three-Point Shooting, Midrange Scoring, Rim Pressure, Playmaking, Defense, and Playtypes. Each block receives equal weight (~16.7% of the final vector), so no single area of the game can dominate the similarity calculation.
                 </p>
                 <p className="similarity-blocked-part-copy">
-                  Similarity uses cosine distance by default on this transformed raw feature space. Luka Doncic player comps use the same pipeline but rank nearest neighbors with Euclidean distance.
+                  Similarity uses cosine distance throughout this transformed feature space.
                 </p>
               </UniverseAccordion>
             </div>
@@ -1699,6 +1699,7 @@ function getRadarLabelLines(axis) {
     "MidRange": ["Mid"],
     "RimPressure": ["Rim"],
     "Playmaking": ["Play"],
+    "Playtypes": ["Types"],
     "D-LEBRON": ["D-LEBRON"],
     "Off-Ball 3PT Shooting": ["Off-Ball", "3PT"],
     "Self-Created 3PT Shooting": ["Self-Created", "3PT"],

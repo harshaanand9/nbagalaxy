@@ -29,7 +29,7 @@ except ImportError:
     )
 
 
-APP_VERSION = "0.23.0"
+APP_VERSION = "0.24.0"
 BACKEND_DIR = Path(__file__).resolve().parent
 BACKEND_DATA_DIR = BACKEND_DIR / "data"
 DEFAULT_DATASET_PATH = os.environ.get(
@@ -157,45 +157,73 @@ CURRENT_CSV_FEATURES = [
     "contested_shots_per_game",
     "off_fouls_drawn_per_game",
     "potential_assists_and_ft_assists",
+    "zero_to_one_drib_3PA_frequency",
+    "zero_to_one_drib_3PA_accuracy",
+    "three_to_six_drib_3FGA_frequency",
+    "three_to_six_drib_3FGA_accuracy",
+    "seven_plus_drib_3FGA_frequency",
+    "seven_plus_drib_3FGA_accuracy",
+    "box_creation",
+    "offensive_load",
+    "pts_created_from_assists_per_75",
+    "potential_assists_and_ft_assists_per_75",
+    "touches_per_75",
+    "passes_received_per_75",
+    "PTS_PER_100_ON_OFF",
+    "p_r_ball_handler_frequency",
+    "p_r_ball_handler_ppp",
+    "iso_frequency",
+    "isolation_ppp",
+    "hand_off_frequency",
+    "hand_off_ppp",
+    "cut_frequency",
+    "cut_ppp",
+    "off_screen_frequency",
+    "off_screen_ppp",
+    "spot_up_frequency",
+    "spot_up_ppp",
+    "opp_players_fg_pct_difference_adjusted",
 ]
 
 EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES = {
     "ThreePT": [
-        "tight_very_tight_3fga_per_game",
+        "zero_to_one_drib_3PA_frequency",
+        "zero_to_one_drib_3PA_accuracy",
+        "three_to_six_drib_3FGA_frequency",
+        "three_to_six_drib_3FGA_accuracy",
+        "seven_plus_drib_3FGA_frequency",
+        "seven_plus_drib_3FGA_accuracy",
+        "3fga_frequency",
+        "3P_Accuracy",
+        "tight_very_tight_3fga_frequency",
         "tight_very_tight_3fga_accuracy",
-        "open_3fga_per_game",
+        "open_3fga_frequency",
         "open_3fga_accuracy",
-        "Wide_Open_3FGA_per_game",
+        "Wide_Open_3FGA_Frequency",
         "Wide_Open_3FG_PCT",
-        "pull_up_3PA_per_game",
-        "pull_up_3P_accuracy",
-        "catch_shoot_3PA_per_game",
-        "catch_shoot_3P_accuracy",
-        "avg_drib_fg3a",
         "Avg3ptShotDistance",
         "pts_from_3s_per_75",
         "pct_fga_3FGA",
         "pct_3p_fg_assisted",
-        "avg_closest_defender_3FGA",
     ],
     "MidRange": [
-        "tight_very_tight_2fga_per_game",
+        "MidRangeFrequency",
+        "MidRangeAccuracy",
+        "tight_very_tight_2fga_frequency",
         "tight_very_tight_2fga_accuracy",
-        "open_2fga_per_game",
+        "open_2fga_frequency",
         "open_2fga_accuracy",
-        "pull_up_2PA_per_game",
-        "pull_up_2P_accuracy",
         "Avg2ptShotDistance",
         "pct_fga_MR",
         "pts_from_midrange_per_75",
         "pct_2p_fg_assisted",
     ],
     "RimPressure": [
-        "restricted_area_fga_per_game",
+        "RestrictedArea_Frequency",
         "RestrictedArea_Accuracy",
-        "paint_non_ra_fga_per_game",
+        "Paint_Non_RA_Frequency",
         "Paint_Non_RA_Accuracy",
-        "drive_fga_per_game",
+        "drive_fga_frequency",
         "drive_fg_pct",
         "dunks_per_75_poss",
         "pts_from_drives_per_75",
@@ -203,34 +231,60 @@ EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES = {
         "drive_fta_rate",
     ],
     "Playmaking": [
-        "avg_drib_per_touch",
-        "avg_sec_per_touch",
-        "crafted_box_creation",
+        "box_creation",
         "crafted_passer_rating",
-        "pts_created_from_assists",
-        "potential_assists_and_ft_assists",
+        "offensive_load",
+        "pts_created_from_assists_per_75",
+        "potential_assists_and_ft_assists_per_75",
+        "assist_frequency",
         "ASSISTS_ON_OFF",
         "EFG_PCT_ON_OFF",
-        "assists_tov_ratio",
         "potential_assist_tov_ratio",
-        "THREE_PT_FG_PCT_ON_OFF",
         "PTS_PER_100_ON_OFF",
     ],
     "Defense": [
         "D-LEBRON",
         "Opp_players_fga_per_75_poss",
-        "contested_shots_per_game",
-        "off_fouls_drawn_per_game",
+        "contested_shot_frequency",
+        "off_fouls_drawn_frequency",
+        "Blocks_per_75",
+        "Deflections_per_75",
+        "opp_players_fg_pct_difference_adjusted",
+    ],
+    "Playtypes": [
+        "avg_drib_per_touch",
+        "avg_sec_per_touch",
+        "touches_per_75",
+        "passes_received_per_75",
+        "p_r_ball_handler_frequency",
+        "p_r_ball_handler_ppp",
+        "iso_frequency",
+        "isolation_ppp",
+        "hand_off_frequency",
+        "hand_off_ppp",
+        "cut_frequency",
+        "cut_ppp",
+        "off_screen_frequency",
+        "off_screen_ppp",
+        "spot_up_frequency",
+        "spot_up_ppp",
+        "pull_up_3P_frequency",
+        "pull_up_3P_accuracy",
+        "catch_shoot_3P_frequency",
+        "catch_shoot_3P_accuracy",
+        "pull_up_2P_frequency",
+        "pull_up_2P_accuracy",
     ],
 }
 EUCLIDEAN_KMEANS_LOCKED_GROUP_WEIGHTS = {
-    "ThreePT": 0.200,
-    "MidRange": 0.200,
-    "RimPressure": 0.200,
-    "Playmaking": 0.200,
-    "Defense": 0.200,
+    "ThreePT":     round(1.0 / 6, 10),
+    "MidRange":    round(1.0 / 6, 10),
+    "RimPressure": round(1.0 / 6, 10),
+    "Playmaking":  round(1.0 / 6, 10),
+    "Defense":     round(1.0 / 6, 10),
+    "Playtypes":   round(1.0 / 6, 10),
 }
-EUCLIDEAN_KMEANS_LOCKED_GROUP_ORDER = ["ThreePT", "MidRange", "RimPressure", "Playmaking", "Defense"]
+EUCLIDEAN_KMEANS_LOCKED_GROUP_ORDER = ["ThreePT", "MidRange", "RimPressure", "Playmaking", "Defense", "Playtypes"]
 
 
 def build_locked_euclidean_feature_signature() -> str:
@@ -242,16 +296,13 @@ def build_locked_euclidean_feature_signature() -> str:
         "euclidean_kmeans_locked_clip_zscore": EUCLIDEAN_KMEANS_LOCKED_CLIP_ZSCORE,
         "euclidean_kmeans_locked_pipeline": EUCLIDEAN_KMEANS_LOCKED_PIPELINE,
         "euclidean_kmeans_locked_similarity_distance_metric": EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
-        "euclidean_kmeans_locked_luka_override_metric": LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC,
     }
     raw_signature = json.dumps(signature_payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(raw_signature).hexdigest()
 EUCLIDEAN_KMEANS_LOCKED_K = 12
-EUCLIDEAN_KMEANS_LOCKED_PIPELINE = "per_game_raw52_equal_blocks_cosine_luka_euclidean"
-EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM = "season_median_imputed_guard_standardized_clipped_raw52_equal_blocks"
+EUCLIDEAN_KMEANS_LOCKED_PIPELINE = "freq_raw_6blocks_equal_cosine"
+EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM = "season_median_imputed_guard_standardized_clipped_freq_6blocks_equal"
 EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC = "cosine"
-LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC = "euclidean"
-LUKA_DONCIC_SIMILARITY_OVERRIDE_KEY = "lukadoncic"
 GALAXY_SIMILAR_PLAYER_COUNT = 5
 GALAXY_CLUSTER_KNN_COUNT = 2
 GALAXY_UMAP_N_NEIGHBORS = 35
@@ -377,6 +428,7 @@ SIMILAR_PLAYERS_BLOCK_SCORE_COLUMNS = [
     "rimpressure_similarity_score",
     "playmaking_similarity_score",
     "defense_similarity_score",
+    "playtypes_similarity_score",
 ]
 SIMILAR_PLAYERS_REQUIRED_DETAIL_COLUMNS = [
     "strongest_similarity_blocks",
@@ -386,6 +438,7 @@ SIMILAR_PLAYERS_REQUIRED_DETAIL_COLUMNS = [
     "rimpressure_distance",
     "playmaking_distance",
     "defense_distance",
+    "playtypes_distance",
     *SIMILAR_PLAYERS_BLOCK_SCORE_COLUMNS,
 ]
 
@@ -409,7 +462,18 @@ PLAYER_COMPS_PACE_PATH = os.environ.get(
 )
 PULLUP_DATASET_PATH = os.environ.get(
     "PULLUP_DATASET_PATH",
-    "/Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_13_14_25_26_pullup.csv",
+    str(
+        next(
+            (
+                p for p in [
+                    Path(__file__).resolve().parent / "data" / "fullseasonfeatures_13_14_25_26_pullup.csv",
+                    Path("/Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_13_14_25_26_pullup.csv"),
+                ]
+                if p.exists()
+            ),
+            Path(__file__).resolve().parent / "data" / "fullseasonfeatures_13_14_25_26_pullup.csv",
+        )
+    ),
 )
 PLAYER_COMPS_TARGET_PACE_MODE = os.environ.get("PLAYER_COMPS_TARGET_PACE_MODE", "latest")
 DLEBRON_FEATURE = "D-LEBRON"
@@ -603,8 +667,6 @@ HEADSHOT_NAME_ALIASES = {
 }
 
 EUCLIDEAN_KMEANS_LOCKED_EXCLUDED_NAMES = {
-    "ben simmons",
-    "lebron james",
     "scottie barnes",
 }
 EUCLIDEAN_KMEANS_CLUSTER_NAME_BY_NUMBER = {
@@ -648,9 +710,7 @@ LOWER_IS_BETTER_PERCENTILE_FEATURES = {
 }
 
 PERCENTILE_AND_BADGE_EXCLUDED_NAMES = {
-    "lebron james",
     "scottie barnes",
-    "ben simmons",
 }
 
 DEFENSE_SCORE_CAPPED_NAMES = {
@@ -659,13 +719,7 @@ DEFENSE_SCORE_CAPPED_NAMES = {
     "stephen curry",
 }
 
-ROWS_TO_REMOVE = [
-    ("Ben Simmons", "2019-20", "PHI", "PG"),
-    ("Ben Simmons", "2022-23", "BRK", "PG"),
-    ("Ben Simmons", "2018-19", "PHI", "PG"),
-    ("Ben Simmons", "2020-21", "PHI", "PG"),
-    ("Ben Simmons", "2024-25", "BRK,LAC", "PG"),
-]
+ROWS_TO_REMOVE = []
 
 ALLOWED_ALGORITHMS = {"kmeans"}
 DEFAULT_ALGORITHM = "kmeans"
@@ -1090,6 +1144,23 @@ def add_locked_similarity_derived_features(guards: pd.DataFrame) -> pd.DataFrame
     combined_playmaking_volume = combined_playmaking_volume.where(potential_assists.notna() | ft_assists.notna(), np.nan)
     output["potential_assists_and_ft_assists"] = combined_playmaking_volume.astype(float)
 
+    # Bayesian shrinkage of opponent FG% difference toward the season-pool median,
+    # weighted by opponent FGA sample size (guards only when called from build_locked_euclidean_kmeans_space).
+    if "opp_players_fg_pct_difference" in output.columns and "Opp_players_fga_per_75_poss" in output.columns:
+        adj = pd.Series(np.nan, index=output.index, dtype=float)
+        season_col = output["Season"] if "Season" in output.columns else pd.Series("unknown", index=output.index)
+        for season_val, grp in output.groupby(season_col):
+            x = pd.to_numeric(grp["opp_players_fg_pct_difference"], errors="coerce")
+            a = pd.to_numeric(grp["Opp_players_fga_per_75_poss"], errors="coerce")
+            mu_s = x.median()
+            t_s = a.median()
+            if pd.isna(t_s) or t_s == 0:
+                adj.loc[grp.index] = x
+            else:
+                w = a / (a + t_s)
+                adj.loc[grp.index] = mu_s + w * (x - mu_s)
+        output["opp_players_fg_pct_difference_adjusted"] = adj
+
     return output
 
 
@@ -1298,6 +1369,10 @@ def build_block_scores(row: pd.Series) -> Dict[str, Dict[str, float]]:
         "Defense": {
             "distance": row_float(row, "defense_distance"),
             "similarity_score": row_float(row, "defense_similarity_score"),
+        },
+        "Playtypes": {
+            "distance": row_float(row, "playtypes_distance"),
+            "similarity_score": row_float(row, "playtypes_similarity_score"),
         },
     }
 
@@ -1954,7 +2029,7 @@ def load_player_comps_percentile_source() -> Optional[Dict[str, object]]:
         return None
 
     eligible = source[source["position"].isin(["PG", "SG"])].copy()
-    excluded_names = {normalize_player_name_for_percentile_pool(name) for name in ["LeBron James", "Scottie Barnes", "Ben Simmons"]}
+    excluded_names = {normalize_player_name_for_percentile_pool(name) for name in PERCENTILE_AND_BADGE_EXCLUDED_NAMES}
     eligible = eligible[~eligible["Player Name"].map(normalize_player_name_for_percentile_pool).isin(excluded_names)].copy()
     if eligible.empty:
         return None
@@ -2045,7 +2120,7 @@ def attach_badge_rarity_columns(badge_frame: pd.DataFrame, guards: Optional[pd.D
         return badge_frame
 
     output = badge_frame.copy()
-    excluded_names = {normalize_player_name_for_percentile_pool(name) for name in ["LeBron James", "Scottie Barnes", "Ben Simmons"]}
+    excluded_names = {normalize_player_name_for_percentile_pool(name) for name in PERCENTILE_AND_BADGE_EXCLUDED_NAMES}
 
     if guards is not None and not guards.empty and {"Season", "Player Name", "position"}.issubset(set(guards.columns)):
         eligible = guards[guards["position"].isin(["PG", "SG"])].copy()
@@ -2401,8 +2476,6 @@ def build_locked_euclidean_kmeans_space(base_guards: pd.DataFrame) -> tuple[pd.D
         "euclidean_kmeans_locked_block_summary": block_summary_rows,
         "euclidean_kmeans_locked_block_slices": block_slice_map,
         "euclidean_kmeans_locked_excluded_names": sorted(EUCLIDEAN_KMEANS_LOCKED_EXCLUDED_NAMES),
-        "euclidean_kmeans_locked_luka_euclidean_override_names": ["Luka Doncic"],
-        "euclidean_kmeans_locked_luka_euclidean_override_metric": LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC,
         "euclidean_kmeans_unmatched_guard_rows_dropped": unmatched_guard_count,
         "euclidean_kmeans_matched_assignment_count": matched_assignment_count,
         "euclidean_kmeans_assignment_rows_not_in_dataset": missing_dataset_assignment_count,
@@ -2442,7 +2515,6 @@ def build_cache_key(
         "euclidean_kmeans_locked_group_order": EUCLIDEAN_KMEANS_LOCKED_GROUP_ORDER,
         "euclidean_kmeans_locked_pipeline": EUCLIDEAN_KMEANS_LOCKED_PIPELINE,
         "euclidean_kmeans_locked_similarity_distance_metric": EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
-        "euclidean_kmeans_locked_luka_override_metric": LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC,
         "galaxy_similar_player_count": GALAXY_SIMILAR_PLAYER_COUNT,
         "galaxy_cluster_knn_count": GALAXY_CLUSTER_KNN_COUNT,
         "galaxy_umap_n_neighbors": GALAXY_UMAP_N_NEIGHBORS,
@@ -2768,8 +2840,7 @@ def get_matching_precomputed_galaxy_assets(guards: pd.DataFrame) -> Optional[tup
             "euclidean_kmeans_locked_clip_zscore": metric_meta.get("euclidean_kmeans_locked_clip_zscore"),
             "euclidean_kmeans_locked_pipeline": metric_meta.get("pipeline"),
             "euclidean_kmeans_locked_similarity_distance_metric": metric_meta.get("similarity_distance_metric"),
-            "euclidean_kmeans_locked_luka_override_metric": metric_meta.get("euclidean_kmeans_locked_luka_euclidean_override_metric"),
-        }
+            }
         raw_legacy_signature = json.dumps(legacy_signature_payload, sort_keys=True).encode("utf-8")
         precomputed_signature = hashlib.sha256(raw_legacy_signature).hexdigest()
 
@@ -2954,7 +3025,6 @@ def build_similarity_edges_for_galaxy(
     X_metric: Optional[np.ndarray] = None,
     block_slices: Optional[Dict[str, Dict[str, int]]] = None,
     default_similarity_metric: str = EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
-    euclidean_override_distance_matrix: Optional[np.ndarray] = None,
 ) -> List[Dict[str, object]]:
     player_key_array = guards["player_key"].astype(str).to_numpy()
     player_name_array = guards["Player Name"].astype(str).to_numpy()
@@ -2969,20 +3039,8 @@ def build_similarity_edges_for_galaxy(
     row_count = int(len(player_key_array))
 
     for source_index in range(row_count):
-        source_uses_euclidean_override = (
-            normalized_name_array[int(source_index)] == LUKA_DONCIC_SIMILARITY_OVERRIDE_KEY
-            and euclidean_override_distance_matrix is not None
-        )
-        source_distance_metric = (
-            LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC
-            if source_uses_euclidean_override
-            else default_similarity_metric
-        )
-        source_distance_matrix = (
-            euclidean_override_distance_matrix
-            if source_uses_euclidean_override
-            else distance_matrix
-        )
+        source_distance_metric = default_similarity_metric
+        source_distance_matrix = distance_matrix
         candidate_mask = normalized_name_array != normalized_name_array[int(source_index)]
         candidate_mask[int(source_index)] = False
         candidate_indices = np.where(candidate_mask)[0]
@@ -3200,16 +3258,6 @@ def build_galaxy_payload(
         else distance_metric
     )
     distance_matrix = pairwise_distance_matrix(X_metric, similarity_distance_metric)
-    euclidean_override_names = []
-    if metric_meta is not None:
-        raw_override_names = metric_meta.get("euclidean_kmeans_locked_luka_euclidean_override_names", [])
-        if isinstance(raw_override_names, list):
-            euclidean_override_names = [str(name) for name in raw_override_names]
-    euclidean_override_distance_matrix = (
-        pairwise_distance_matrix(X_metric, LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC)
-        if euclidean_override_names
-        else None
-    )
     block_slices = None
     if metric_meta is not None and (include_block_details or bool(display_meta.get("precomputed", False))):
         # Block-level edge details are expensive to compute live and should come
@@ -3227,7 +3275,6 @@ def build_galaxy_payload(
         X_metric=X_metric,
         block_slices=block_slices,
         default_similarity_metric=similarity_distance_metric,
-        euclidean_override_distance_matrix=euclidean_override_distance_matrix,
     )
     cluster_edges = build_cluster_constellation_edges_for_galaxy(
         guards=guards,
@@ -3243,7 +3290,6 @@ def build_galaxy_payload(
             else "active_metric_space"
         ),
         "similarity_distance_metric": similarity_distance_metric,
-        "euclidean_override_player_names": euclidean_override_names,
         "display_space": display_meta,
         "similar_player_count": int(GALAXY_SIMILAR_PLAYER_COUNT),
         "same_cluster_knn_count": int(GALAXY_CLUSTER_KNN_COUNT),
@@ -3862,7 +3908,7 @@ def build_new_percentile_breakdown_payload(dataset_path: str, algorithm: str, di
     player_season = str(player_row["Season"])
     season_guard_mask = guards["Season"].astype(str).eq(player_season).to_numpy()
     cluster_title = get_cluster_title(player_cluster_number, algorithm, distance_metric)
-    score_logic = "Same-season guard percentile scoring with LeBron James, Scottie Barnes, and Ben Simmons excluded from percentile peer pools."
+    score_logic = "Same-season guard percentile scoring with Scottie Barnes excluded from percentile peer pools."
     if breakdown_kind == "skill_breakdown":
         score_logic += " ThreePT, MidRange, and RimPressure use median subsection scores; Playmaking averages subsection scores; D-LEBRON uses the same-season guard percentile of D-LEBRON."
     return {
@@ -4955,7 +5001,6 @@ def get_config():
         "euclidean_kmeans_locked_pipeline": EUCLIDEAN_KMEANS_LOCKED_PIPELINE,
         "euclidean_kmeans_locked_space_transform": EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM,
         "euclidean_kmeans_locked_similarity_distance_metric": EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
-        "euclidean_kmeans_locked_luka_euclidean_override_metric": LUKA_DONCIC_SIMILARITY_DISTANCE_METRIC,
         "galaxy_similar_player_count": GALAXY_SIMILAR_PLAYER_COUNT,
         "galaxy_cluster_knn_count": GALAXY_CLUSTER_KNN_COUNT,
         "euclidean_kmeans_cluster_name_by_number": EUCLIDEAN_KMEANS_CLUSTER_NAME_BY_NUMBER,

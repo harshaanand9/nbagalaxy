@@ -3,9 +3,9 @@
 Precompute the Galaxy similarity assets from the same locked KMeans truth
 space used by the web app:
 
-    per-game volume derivation where applicable -> season median imputation
-    -> season guard z-score clipping -> no PCA -> equal block weighting
-    -> cosine distance, with Luka Doncic comps using Euclidean distance.
+    season median imputation -> season guard z-score clipping -> no PCA
+    -> six equal-weight blocks (ThreePT, MidRange, RimPressure, Playmaking,
+    Defense, Playtypes) -> cosine distance for all players.
 
 By default, this preserves an existing galaxy_precomputed.json coordinate
 embedding when the player keys still match, so similarity logic can be
