@@ -29,7 +29,7 @@ except ImportError:
     )
 
 
-APP_VERSION = "0.24.0"
+APP_VERSION = "0.25.0"
 BACKEND_DIR = Path(__file__).resolve().parent
 BACKEND_DATA_DIR = BACKEND_DIR / "data"
 DEFAULT_DATASET_PATH = os.environ.get(
@@ -183,6 +183,7 @@ CURRENT_CSV_FEATURES = [
     "spot_up_frequency",
     "spot_up_ppp",
     "opp_players_fg_pct_difference_adjusted",
+    "D-LEBRON_adjusted",
 ]
 
 EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES = {
@@ -243,13 +244,13 @@ EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES = {
         "PTS_PER_100_ON_OFF",
     ],
     "Defense": [
-        "D-LEBRON",
         "Opp_players_fga_per_75_poss",
         "contested_shot_frequency",
         "off_fouls_drawn_frequency",
         "Blocks_per_75",
         "Deflections_per_75",
         "opp_players_fg_pct_difference_adjusted",
+        "D-LEBRON_adjusted",
     ],
     "Playtypes": [
         "avg_drib_per_touch",
@@ -276,14 +277,18 @@ EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES = {
         "pull_up_2P_accuracy",
     ],
 }
+_PLAYTYPES_WEIGHT     = 0.25
+_NON_PLAYTYPES_WEIGHT = (1.0 - _PLAYTYPES_WEIGHT) / 5  # 5 non-Playtypes groups
 EUCLIDEAN_KMEANS_LOCKED_GROUP_WEIGHTS = {
-    "ThreePT":     round(1.0 / 6, 10),
-    "MidRange":    round(1.0 / 6, 10),
-    "RimPressure": round(1.0 / 6, 10),
-    "Playmaking":  round(1.0 / 6, 10),
-    "Defense":     round(1.0 / 6, 10),
-    "Playtypes":   round(1.0 / 6, 10),
+    "ThreePT":     _NON_PLAYTYPES_WEIGHT,
+    "MidRange":    _NON_PLAYTYPES_WEIGHT,
+    "RimPressure": _NON_PLAYTYPES_WEIGHT,
+    "Playmaking":  _NON_PLAYTYPES_WEIGHT,
+    "Defense":     _NON_PLAYTYPES_WEIGHT,
+    "Playtypes":   _PLAYTYPES_WEIGHT,
 }
+CONTESTED_SHOT_OPPORTUNITY_WEIGHT = 0.80
+OPP_FGA_OPPORTUNITY_WEIGHT        = 0.20
 EUCLIDEAN_KMEANS_LOCKED_GROUP_ORDER = ["ThreePT", "MidRange", "RimPressure", "Playmaking", "Defense", "Playtypes"]
 
 
@@ -1144,22 +1149,49 @@ def add_locked_similarity_derived_features(guards: pd.DataFrame) -> pd.DataFrame
     combined_playmaking_volume = combined_playmaking_volume.where(potential_assists.notna() | ft_assists.notna(), np.nan)
     output["potential_assists_and_ft_assists"] = combined_playmaking_volume.astype(float)
 
-    # Bayesian shrinkage of opponent FG% difference toward the season-pool median,
-    # weighted by opponent FGA sample size (guards only when called from build_locked_euclidean_kmeans_space).
-    if "opp_players_fg_pct_difference" in output.columns and "Opp_players_fga_per_75_poss" in output.columns:
+    # Defensive opportunity score: composite reliability weight used for both
+    # opp_players_fg_pct_difference_adjusted and D-LEBRON_adjusted.
+    # 80% contested_shot_frequency season percentile + 20% Opp_players_fga_per_75_poss season percentile.
+    season_col = output["Season"] if "Season" in output.columns else pd.Series("unknown", index=output.index)
+
+    def _defensive_opportunity_score(grp: pd.DataFrame) -> pd.Series:
+        contested = pd.to_numeric(grp.get("contested_shot_frequency", pd.Series(np.nan, index=grp.index)), errors="coerce")
+        opp_fga   = pd.to_numeric(grp.get("Opp_players_fga_per_75_poss", pd.Series(np.nan, index=grp.index)), errors="coerce")
+        c_pct = contested.rank(pct=True, method="average").fillna(0.0)
+        f_pct = opp_fga.rank(pct=True, method="average").fillna(0.0)
+        return (CONTESTED_SHOT_OPPORTUNITY_WEIGHT * c_pct + OPP_FGA_OPPORTUNITY_WEIGHT * f_pct).astype(float)
+
+    if "opp_players_fg_pct_difference" in output.columns:
         adj = pd.Series(np.nan, index=output.index, dtype=float)
-        season_col = output["Season"] if "Season" in output.columns else pd.Series("unknown", index=output.index)
-        for season_val, grp in output.groupby(season_col):
-            x = pd.to_numeric(grp["opp_players_fg_pct_difference"], errors="coerce")
-            a = pd.to_numeric(grp["Opp_players_fga_per_75_poss"], errors="coerce")
+        for _, grp in output.groupby(season_col):
+            x    = pd.to_numeric(grp["opp_players_fg_pct_difference"], errors="coerce")
             mu_s = x.median()
-            t_s = a.median()
+            if pd.isna(mu_s):
+                mu_s = 0.0
+            opp  = _defensive_opportunity_score(grp)
+            t_s  = opp.median()
             if pd.isna(t_s) or t_s == 0:
                 adj.loc[grp.index] = x
             else:
-                w = a / (a + t_s)
+                w = opp / (opp + t_s)
                 adj.loc[grp.index] = mu_s + w * (x - mu_s)
         output["opp_players_fg_pct_difference_adjusted"] = adj
+
+    if "D-LEBRON" in output.columns:
+        d_adj = pd.Series(np.nan, index=output.index, dtype=float)
+        for _, grp in output.groupby(season_col):
+            d    = pd.to_numeric(grp["D-LEBRON"], errors="coerce")
+            mu_s = d.median()
+            if pd.isna(mu_s):
+                mu_s = 0.0
+            opp  = _defensive_opportunity_score(grp)
+            t_s  = opp.median()
+            if pd.isna(t_s) or t_s == 0:
+                d_adj.loc[grp.index] = d
+            else:
+                w = opp / (opp + t_s)
+                d_adj.loc[grp.index] = mu_s + w * (d - mu_s)
+        output["D-LEBRON_adjusted"] = d_adj
 
     return output
 

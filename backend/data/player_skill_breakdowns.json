@@ -6,8 +6,8 @@
     "algorithm": "kmeans",
     "distance_metric": "euclidean",
     "k": 12,
-    "feature_signature": "d5fe32a824ba417f71a000fd755d7b076c2258a6113cfffd5b3129d1562e27e9",
-    "created_at": "2026-05-13T00:57:00.387407+00:00",
+    "feature_signature": "b80464e6f59a39e280d0fd4196aa4262f65338827f04bce45fdcd180bd58194e",
+    "created_at": "2026-05-13T14:18:33.551708+00:00",
     "precompute_script": "scripts/precompute_player_breakdowns.py"
   },
   "player_count": 1405,
