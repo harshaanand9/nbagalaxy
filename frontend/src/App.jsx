@@ -2939,10 +2939,10 @@ function WelcomeModal() {
           const ctx = canvas.getContext("2d");
           const W = canvas.width = canvas.offsetWidth;
           const H = canvas.height = canvas.offsetHeight;
-          const stars = Array.from({ length: 80 }, () => ({
+          const stars = Array.from({ length: 120 }, () => ({
             x: Math.random() * W,
             y: Math.random() * H,
-            r: Math.random() * 1.2 + 0.3,
+            r: Math.random() * 1.5 + 0.4,
             phase: Math.random() * Math.PI * 2,
             speed: 0.4 + Math.random() * 0.8,
           }));
@@ -2950,7 +2950,7 @@ function WelcomeModal() {
           function draw(t) {
             ctx.clearRect(0, 0, W, H);
             stars.forEach((s) => {
-              const alpha = 0.08 + 0.12 * Math.sin(t * 0.001 * s.speed + s.phase);
+              const alpha = 0.30 + 0.35 * Math.sin(t * 0.001 * s.speed + s.phase);
               ctx.beginPath();
               ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
               ctx.fillStyle = `rgba(223, 243, 244, ${alpha})`;
