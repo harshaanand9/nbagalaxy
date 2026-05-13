@@ -4999,6 +4999,22 @@ export default function App() {
       const selectedTargetPoints = selectedSimilarityEdges
         .map((edge) => pointByKey.get(String(edge.target)))
         .filter(Boolean);
+
+      // ── Golden Match: A→B is golden when B's own #1 comp is A ──────────────
+      const GOLDEN_COLOR = "#f7cd67";
+      const rank1Map = new Map(
+        similarEdges
+          .filter((e) => Number(e.rank) === 1)
+          .map((e) => [String(e.source), String(e.target)])
+      );
+      const goldenMatchTargetKey = (() => {
+        if (!selectedPoint || !selectedSimilarityEdges.length) return null;
+        const top1 = selectedSimilarityEdges.find((e) => Number(e.rank) === 1);
+        if (!top1) return null;
+        const targetKey = String(top1.target);
+        return rank1Map.get(targetKey) === String(selectedPoint.player_key) ? targetKey : null;
+      })();
+
       const galaxyFocusActive = Boolean(selectedPoint || clusterArchetypeFocusActive);
       const selectedPulse = 1;
       const neighborPulse = 1;
@@ -5200,7 +5216,8 @@ export default function App() {
             .flatMap((edge) => {
               const targetPoint = pointByKey.get(String(edge.target));
               if (!targetPoint) return [];
-              const targetColor = getPointColor(targetPoint.cluster, targetPoint);
+              const isGolden = goldenMatchTargetKey && String(edge.target) === goldenMatchTargetKey && Number(edge.rank) === 1;
+              const stemColor = isGolden ? GOLDEN_COLOR : getPointColor(targetPoint.cluster, targetPoint);
               const sourcePosition = getAnimatedGalaxyCoords(selectedPoint);
               const targetPosition = getAnimatedGalaxyCoords(targetPoint);
               const lineCoordinates = {
@@ -5208,7 +5225,7 @@ export default function App() {
                 y: [sourcePosition.y, targetPosition.y, null],
                 z: [sourcePosition.z, targetPosition.z, null],
               };
-              return [
+              const edgeTraces = [
                 {
                   type: "scatter3d",
                   mode: "lines",
@@ -5216,10 +5233,7 @@ export default function App() {
                   showlegend: false,
                   ...lineCoordinates,
                   hoverinfo: "skip",
-                  line: {
-                    color: hexToRgba(targetColor, 0.075),
-                    width: 18.5,
-                  },
+                  line: { color: hexToRgba(stemColor, isGolden ? 0.12 : 0.075), width: 18.5 },
                 },
                 {
                   type: "scatter3d",
@@ -5228,10 +5242,7 @@ export default function App() {
                   showlegend: false,
                   ...lineCoordinates,
                   hoverinfo: "skip",
-                  line: {
-                    color: hexToRgba(targetColor, 0.20),
-                    width: 9.25,
-                  },
+                  line: { color: hexToRgba(stemColor, isGolden ? 0.28 : 0.20), width: 9.25 },
                 },
                 {
                   type: "scatter3d",
@@ -5240,10 +5251,7 @@ export default function App() {
                   showlegend: false,
                   ...lineCoordinates,
                   hoverinfo: "skip",
-                  line: {
-                    color: hexToRgba(targetColor, 0.84),
-                    width: 3.15,
-                  },
+                  line: { color: hexToRgba(stemColor, isGolden ? 0.95 : 0.84), width: 3.15 },
                 },
                 {
                   type: "scatter3d",
@@ -5252,12 +5260,32 @@ export default function App() {
                   showlegend: false,
                   ...lineCoordinates,
                   hoverinfo: "skip",
-                  line: {
-                    color: "rgba(245, 253, 255, 0.38)",
-                    width: 1.05,
-                  },
+                  line: { color: isGolden ? hexToRgba(GOLDEN_COLOR, 0.60) : "rgba(245, 253, 255, 0.38)", width: 1.05 },
                 },
               ];
+              if (isGolden) {
+                const mx = (sourcePosition.x + targetPosition.x) / 2;
+                const my = (sourcePosition.y + targetPosition.y) / 2;
+                const mz = (sourcePosition.z + targetPosition.z) / 2;
+                const dx = targetPosition.x - sourcePosition.x;
+                const dy = targetPosition.y - sourcePosition.y;
+                const len2d = Math.hypot(dx, dy) || 1;
+                const offset = 0.18;
+                edgeTraces.push({
+                  type: "scatter3d",
+                  mode: "text",
+                  name: "Golden match label",
+                  showlegend: false,
+                  x: [mx + (-dy / len2d) * offset],
+                  y: [my + (dx / len2d) * offset],
+                  z: [mz],
+                  text: ["GOLDEN MATCH"],
+                  hoverinfo: "skip",
+                  textposition: "middle center",
+                  textfont: { family: "JetBrains Mono, monospace", size: 9.5, color: GOLDEN_COLOR },
+                });
+              }
+              return edgeTraces;
             })
         : [];
 
@@ -5580,6 +5608,31 @@ export default function App() {
 
       const selectedClusterNameTrace = [];
 
+      const goldenMatchBlobTraces = goldenMatchTargetKey
+        ? (() => {
+            const tp = pointByKey.get(goldenMatchTargetKey);
+            if (!tp) return [];
+            const pos = getAnimatedGalaxyCoords(tp);
+            return [
+              {
+                type: "scatter3d", mode: "markers", name: "Golden match outer aura",
+                showlegend: false, x: [pos.x], y: [pos.y], z: [pos.z], hoverinfo: "skip",
+                marker: { size: 26, color: hexToRgba(GOLDEN_COLOR, 0.09), opacity: 1, line: { width: 0 } },
+              },
+              {
+                type: "scatter3d", mode: "markers", name: "Golden match mid aura",
+                showlegend: false, x: [pos.x], y: [pos.y], z: [pos.z], hoverinfo: "skip",
+                marker: { size: 16, color: hexToRgba(GOLDEN_COLOR, 0.28), opacity: 1, line: { width: 0 } },
+              },
+              {
+                type: "scatter3d", mode: "markers", name: "Golden match core",
+                showlegend: false, x: [pos.x], y: [pos.y], z: [pos.z], hoverinfo: "skip",
+                marker: { size: 9, color: GOLDEN_COLOR, opacity: 0.95, line: { color: hexToRgba(GOLDEN_COLOR, 0.7), width: 1.8 } },
+              },
+            ];
+          })()
+        : [];
+
       return [
         ...clusterConstellationTraces,
         ...similarityTrace,
@@ -5587,6 +5640,7 @@ export default function App() {
         ...baseTraces,
         ...selectedClusterMedoidSunTrace,
         ...selectedNeighborGlowTrace,
+        ...goldenMatchBlobTraces,
         ...selectedGlowTrace,
         ...selectedNeighborTrace,
         ...selectedNeighborHitboxTrace,
