@@ -115,6 +115,7 @@ const GALAXY_CLUSTER_FOCUS_MIN_CAMERA_DISTANCE = 0.42;
 const GALAXY_CLUSTER_FOCUS_MAX_CAMERA_DISTANCE = 0.95;
 const GALAXY_CLUSTER_FOCUS_RADIUS_MULTIPLIER = 1.45;
 const GALAXY_FOCUS_CAMERA_ANIMATION_MS = 820;
+const GALAXY_PLAYER_FOCUS_CAMERA_ANIMATION_MS = 1380;
 
 function hexToRgb(hex) {
   const value = hex.replace("#", "");
@@ -3323,11 +3324,28 @@ export default function App() {
     z: Number(startVector.z ?? 0) + (Number(endVector.z ?? 0) - Number(startVector.z ?? 0)) * progress,
   });
 
+  // Spherical linear interpolation for unit direction vectors — produces a smooth
+  // great-circle arc so the camera doesn't cut through the galaxy on large rotations.
+  const slerpGalaxyVector = (a, b, t) => {
+    const cosAngle = Math.max(-1, Math.min(1,
+      Number(a.x ?? 0) * Number(b.x ?? 0) +
+      Number(a.y ?? 0) * Number(b.y ?? 0) +
+      Number(a.z ?? 0) * Number(b.z ?? 0)
+    ));
+    if (Math.abs(cosAngle) >= 0.9999) return interpolateGalaxyVector(a, b, t);
+    const angle = Math.acos(cosAngle);
+    const sinAngle = Math.sin(angle);
+    const fa = Math.sin((1 - t) * angle) / sinAngle;
+    const fb = Math.sin(t * angle) / sinAngle;
+    return { x: fa * a.x + fb * b.x, y: fa * a.y + fb * b.y, z: fa * a.z + fb * b.z };
+  };
+
+  // Quintic ease-in-out: smoother acceleration/deceleration for large camera rotations.
   const easeGalaxyCameraProgress = (progress) => {
-    const clampedProgress = clamp(progress, 0, 1);
-    return clampedProgress < 0.5
-      ? 4 * clampedProgress * clampedProgress * clampedProgress
-      : 1 - ((-2 * clampedProgress + 2) ** 3) / 2;
+    const t = clamp(progress, 0, 1);
+    return t < 0.5
+      ? 16 * t * t * t * t * t
+      : 1 - ((-2 * t + 2) ** 5) / 2;
   };
 
   const animateGalaxyCameraTo = (targetCamera, durationMs = GALAXY_FOCUS_CAMERA_ANIMATION_MS) => {
@@ -3342,14 +3360,26 @@ export default function App() {
     const endCamera = cloneGalaxyCamera(targetCamera);
     const startTime = window.performance.now();
 
+    // Pre-decompose eye into direction + distance so we can slerp the arc.
+    const startEyeDist = Math.hypot(startCamera.eye.x, startCamera.eye.y, startCamera.eye.z) || 1;
+    const endEyeDist   = Math.hypot(endCamera.eye.x,   endCamera.eye.y,   endCamera.eye.z)   || 1;
+    const startEyeDir  = { x: startCamera.eye.x / startEyeDist, y: startCamera.eye.y / startEyeDist, z: startCamera.eye.z / startEyeDist };
+    const endEyeDir    = { x: endCamera.eye.x   / endEyeDist,   y: endCamera.eye.y   / endEyeDist,   z: endCamera.eye.z   / endEyeDist };
+
     const step = (currentTime) => {
       const rawProgress = durationMs <= 0 ? 1 : (currentTime - startTime) / durationMs;
       const easedProgress = easeGalaxyCameraProgress(rawProgress);
+      const interpDir  = slerpGalaxyVector(startEyeDir, endEyeDir, easedProgress);
+      const interpDist = startEyeDist + (endEyeDist - startEyeDist) * easedProgress;
       galaxyCameraRef.current = {
         ...GALAXY_DEFAULT_CAMERA,
-        eye: interpolateGalaxyVector(startCamera.eye, endCamera.eye, easedProgress),
+        eye: { x: interpDir.x * interpDist, y: interpDir.y * interpDist, z: interpDir.z * interpDist },
         center: interpolateGalaxyVector(startCamera.center, endCamera.center, easedProgress),
-        up: interpolateGalaxyVector(startCamera.up, endCamera.up, easedProgress),
+        up: slerpGalaxyVector(
+          normalizeGalaxyVector(startCamera.up),
+          normalizeGalaxyVector(endCamera.up),
+          easedProgress
+        ),
       };
       setGalaxyCameraRevision((previousRevision) => previousRevision + 1);
 
@@ -3484,6 +3514,116 @@ export default function App() {
     };
   };
 
+  // Given the 5 constellation points (already in normalised galaxy coords), find the
+  // camera view direction that is closest to face-on with the constellation plane,
+  // then optimise the roll angle so stems fan out with maximum angular separation.
+  const computeConstellationOptimalCameraAxes = (normalizedFocusPoints) => {
+    const n = normalizedFocusPoints.length;
+    if (n < 2) return getStableGalaxyCameraAxes(GALAXY_PLAYER_FOCUS_BASE_CAMERA);
+
+    // ── Centroid ───────────────────────────────────────────────────────────────
+    const centroid = normalizedFocusPoints.reduce(
+      (acc, p) => ({ x: acc.x + p.x / n, y: acc.y + p.y / n, z: acc.z + p.z / n }),
+      { x: 0, y: 0, z: 0 }
+    );
+
+    // ── 3×3 covariance matrix ──────────────────────────────────────────────────
+    let cxx = 0, cxy = 0, cxz = 0, cyy = 0, cyz = 0, czz = 0;
+    for (const p of normalizedFocusPoints) {
+      const dx = p.x - centroid.x, dy = p.y - centroid.y, dz = p.z - centroid.z;
+      cxx += dx * dx; cxy += dx * dy; cxz += dx * dz;
+      cyy += dy * dy; cyz += dy * dz; czz += dz * dz;
+    }
+    const COV = [[cxx, cxy, cxz], [cxy, cyy, cyz], [cxz, cyz, czz]];
+
+    const matVec3 = (M, v) => ({
+      x: M[0][0]*v.x + M[0][1]*v.y + M[0][2]*v.z,
+      y: M[1][0]*v.x + M[1][1]*v.y + M[1][2]*v.z,
+      z: M[2][0]*v.x + M[2][1]*v.y + M[2][2]*v.z,
+    });
+    const matSub3 = (A, B) => A.map((row, i) => row.map((v, j) => v - B[i][j]));
+    const outerScale3 = (v, s) => [
+      [s*v.x*v.x, s*v.x*v.y, s*v.x*v.z],
+      [s*v.y*v.x, s*v.y*v.y, s*v.y*v.z],
+      [s*v.z*v.x, s*v.z*v.y, s*v.z*v.z],
+    ];
+
+    // Power iteration with 40 steps — sufficient for 5 points.
+    const powerIterate = (M, seed) => {
+      let v = seed ?? { x: 1, y: 0.1, z: 0.05 };
+      for (let i = 0; i < 40; i++) v = normalizeGalaxyVector(matVec3(M, v));
+      return v;
+    };
+
+    // ── Find two dominant eigenvectors, then normal = their cross product ───────
+    const e1 = powerIterate(COV);
+    const lambda1 = dotGalaxyVector(matVec3(COV, e1), e1);
+    const COV2 = matSub3(COV, outerScale3(e1, lambda1));
+    const e2 = powerIterate(COV2, { x: 0.05, y: 1, z: 0.1 });
+    const planeNormal = normalizeGalaxyVector(crossGalaxyVector(e1, e2));
+
+    // Degenerate case: all points nearly collinear → fall back to default camera.
+    const normalLen = Math.hypot(planeNormal.x, planeNormal.y, planeNormal.z);
+    if (!Number.isFinite(normalLen) || normalLen < 0.1) {
+      return getStableGalaxyCameraAxes(GALAXY_PLAYER_FOCUS_BASE_CAMERA);
+    }
+
+    // ── Choose sign: keep in same hemisphere as the default camera so transitions
+    //    don't flip the viewpoint 180°.
+    const defaultDir = normalizeGalaxyVector(GALAXY_DEFAULT_CAMERA.eye);
+    const sign = dotGalaxyVector(planeNormal, defaultDir) >= 0 ? 1 : -1;
+    const signedNormal = { x: sign*planeNormal.x, y: sign*planeNormal.y, z: sign*planeNormal.z };
+
+    // ── Optimise roll (rotation of the up vector around signedNormal) ──────────
+    // Try 72 angles; pick the one that maximises the minimum angular gap between
+    // projected similarity stems (so they fan out and never overlap).
+    const globalUp = { x: 0, y: 0, z: 1 };
+    const dotUpN   = dotGalaxyVector(globalUp, signedNormal);
+    const perpUp   = normalizeGalaxyVector({
+      x: globalUp.x - dotUpN * signedNormal.x,
+      y: globalUp.y - dotUpN * signedNormal.y,
+      z: globalUp.z - dotUpN * signedNormal.z,
+    });
+
+    const selectedPos = normalizedFocusPoints[0];
+    const neighborPositions = normalizedFocusPoints.slice(1);
+
+    let bestMinGap = -1, bestRolledUp = perpUp;
+    const N_ROLL = 72;
+    for (let i = 0; i < N_ROLL; i++) {
+      const theta  = (2 * Math.PI * i) / N_ROLL;
+      const cosT   = Math.cos(theta), sinT = Math.sin(theta);
+      // Rodrigues' rotation of perpUp around signedNormal by theta.
+      const cross_ = crossGalaxyVector(signedNormal, perpUp);
+      const dot_   = dotGalaxyVector(perpUp, signedNormal);
+      const rotUp  = normalizeGalaxyVector({
+        x: perpUp.x * cosT + cross_.x * sinT + signedNormal.x * dot_ * (1 - cosT),
+        y: perpUp.y * cosT + cross_.y * sinT + signedNormal.y * dot_ * (1 - cosT),
+        z: perpUp.z * cosT + cross_.z * sinT + signedNormal.z * dot_ * (1 - cosT),
+      });
+      const right_   = normalizeGalaxyVector(crossGalaxyVector(rotUp, signedNormal));
+      const screenU_ = normalizeGalaxyVector(crossGalaxyVector(signedNormal, right_));
+
+      if (neighborPositions.length < 2) { bestRolledUp = rotUp; break; }
+
+      const stemAngles = neighborPositions
+        .map((np) => {
+          const rel = { x: np.x - selectedPos.x, y: np.y - selectedPos.y, z: np.z - selectedPos.z };
+          return Math.atan2(dotGalaxyVector(rel, screenU_), dotGalaxyVector(rel, right_));
+        })
+        .sort((a, b) => a - b);
+
+      let minGap = 2 * Math.PI;
+      for (let j = 0; j < stemAngles.length; j++) {
+        const gap = (stemAngles[(j + 1) % stemAngles.length] - stemAngles[j] + 2 * Math.PI) % (2 * Math.PI);
+        if (gap < minGap) minGap = gap;
+      }
+      if (minGap > bestMinGap) { bestMinGap = minGap; bestRolledUp = rotUp; }
+    }
+
+    return getStableGalaxyCameraAxes({ eye: signedNormal, up: bestRolledUp });
+  };
+
   const buildStableGalaxyEye = (currentEye, targetDistance) => {
     const { viewDirection } = getStableGalaxyCameraAxes({ eye: currentEye, up: GALAXY_DEFAULT_CAMERA.up });
     return {
@@ -3554,7 +3694,7 @@ export default function App() {
       z: selectedPosition.z * GALAXY_PLAYER_FOCUS_SELECTED_WEIGHT + neighborCenter.z * (1 - GALAXY_PLAYER_FOCUS_SELECTED_WEIGHT),
     };
     const viewport = getGalaxyFocusViewport();
-    const cameraAxes = getStableGalaxyCameraAxes(GALAXY_PLAYER_FOCUS_BASE_CAMERA);
+    const cameraAxes = computeConstellationOptimalCameraAxes(normalizedFocusPoints);
 
     const projectedPoints = normalizedFocusPoints.map((position) => ({
       x: dotGalaxyVector({
@@ -3621,7 +3761,7 @@ export default function App() {
 
     const targetCamera = computeSelectedPlayerGalaxyCamera(pointToFocus, currentCamera);
     if (!targetCamera) return;
-    animateGalaxyCameraTo(targetCamera, options.durationMs ?? GALAXY_FOCUS_CAMERA_ANIMATION_MS);
+    animateGalaxyCameraTo(targetCamera, options.durationMs ?? GALAXY_PLAYER_FOCUS_CAMERA_ANIMATION_MS);
   };
 
   useEffect(() => {
