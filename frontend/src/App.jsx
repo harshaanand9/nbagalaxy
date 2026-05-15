@@ -102,22 +102,18 @@ const GALAXY_FOCUS_MAX_CAMERA_DISTANCE = 0.92;
 const GALAXY_SELECTED_NEIGHBOR_COUNT = 4;
 const GALAXY_PLAYER_FOCUS_MIN_CAMERA_DISTANCE = 0.20;
 const GALAXY_PLAYER_FOCUS_BASE_CAMERA = GALAXY_DEFAULT_CAMERA;
-const GALAXY_PLAYER_FOCUS_MAX_CAMERA_DISTANCE = 0.88;
-const GALAXY_PLAYER_FOCUS_RADIUS_MULTIPLIER = 0.32;
-const GALAXY_PLAYER_FOCUS_SELECTED_WEIGHT = 0.38;
-const GALAXY_PLAYER_FOCUS_VIEWPORT_PADDING_X = 0.90;
-const GALAXY_PLAYER_FOCUS_VIEWPORT_PADDING_Y = 0.85;
+const GALAXY_PLAYER_FOCUS_MAX_CAMERA_DISTANCE = 0.62;
+const GALAXY_PLAYER_FOCUS_RADIUS_MULTIPLIER = 0.40;
+const GALAXY_PLAYER_FOCUS_VIEWPORT_PADDING_X = 0.72;
+const GALAXY_PLAYER_FOCUS_VIEWPORT_PADDING_Y = 0.72;
 const GALAXY_PLAYER_FOCUS_MIN_SPAN = 0.045;
 const GALAXY_PLAYER_FOCUS_VERTICAL_FOV_RADIANS = 1.10;
 const GALAXY_PLAYER_FOCUS_SIDEBAR_BIAS_RATIO = 0.055;
-const GALAXY_PLAYER_FOCUS_TOP_BIAS_RATIO = 0.025;
 const GALAXY_CLUSTER_FOCUS_MIN_CAMERA_DISTANCE = 0.42;
 const GALAXY_CLUSTER_FOCUS_MAX_CAMERA_DISTANCE = 0.95;
 const GALAXY_CLUSTER_FOCUS_RADIUS_MULTIPLIER = 1.45;
 const GALAXY_FOCUS_CAMERA_ANIMATION_MS = 820;
 const GALAXY_PLAYER_FOCUS_CAMERA_ANIMATION_MS = 1600;
-const GALAXY_FOCUS_MAX_ASPECT_RATIO = 3.5;
-const GALAXY_FOCUS_MIN_LABEL_SEPARATION = 0.14;
 
 function hexToRgb(hex) {
   const value = hex.replace("#", "");
@@ -3519,15 +3515,9 @@ export default function App() {
   // Given the 5 constellation points (normalised galaxy coords) and the current live
   // camera axes, returns the camera axes to use for the focus zoom.
   //
-  // Stage 1 — try the current camera direction (zero rotation).
-  //   Project all points, measure bounding-box aspect ratio and minimum pairwise
-  //   label separation.  If both are within tolerance, return the current axes unchanged
-  //   — the animation is a pure zoom with no rotation at all.
-  //
-  // Stage 2 — minimal rotation (only when Stage 1 fails).
-  //   Binary-search the smallest SLERP blend factor t ∈ [0,1] from the current
-  //   direction toward the PCA plane normal that brings both quality metrics within
-  //   tolerance.  Roll is then optimised to maximise angular separation between stems.
+  // Always rotates to the PCA plane normal of the constellation so the spread is
+  // maximised in 2D regardless of the prior camera direction.  Roll is then
+  // optimised to maximise the minimum angular gap between stems.
   const computeConstellationOptimalCameraAxes = (normalizedFocusPoints, currentCameraAxes) => {
     const n = normalizedFocusPoints.length;
     const fallback = currentCameraAxes ?? getStableGalaxyCameraAxes(GALAXY_PLAYER_FOCUS_BASE_CAMERA);
@@ -3538,31 +3528,7 @@ export default function App() {
       { x: 0, y: 0, z: 0 }
     );
 
-    // Project points (relative to centroid) and return quality flags.
-    const checkQuality = (axes) => {
-      const px = normalizedFocusPoints.map((p) => dotGalaxyVector(
-        { x: p.x - centroid.x, y: p.y - centroid.y, z: p.z - centroid.z }, axes.right));
-      const py = normalizedFocusPoints.map((p) => dotGalaxyVector(
-        { x: p.x - centroid.x, y: p.y - centroid.y, z: p.z - centroid.z }, axes.screenUp));
-      const w = Math.max(Math.max(...px) - Math.min(...px), 1e-9);
-      const h = Math.max(Math.max(...py) - Math.min(...py), 1e-9);
-      const aspect = Math.max(w, h) / Math.min(w, h);
-      const diag = Math.hypot(w, h);
-      let minSep = Infinity;
-      for (let i = 0; i < n; i++) {
-        for (let j = i + 1; j < n; j++) {
-          const d = Math.hypot(px[i] - px[j], py[i] - py[j]);
-          if (d < minSep) minSep = d;
-        }
-      }
-      const minSepNorm = n < 3 ? Infinity : minSep / diag;
-      return aspect <= GALAXY_FOCUS_MAX_ASPECT_RATIO && minSepNorm >= GALAXY_FOCUS_MIN_LABEL_SEPARATION;
-    };
-
-    // ── Stage 1: current camera direction — no rotation ────────────────────────
-    if (checkQuality(fallback)) return fallback;
-
-    // ── Stage 2: PCA plane normal as rotation target ───────────────────────────
+    // PCA: find the two principal spread directions; their cross product is the plane normal.
     let cxx = 0, cxy = 0, cxz = 0, cyy = 0, cyz = 0, czz = 0;
     for (const p of normalizedFocusPoints) {
       const dx = p.x - centroid.x, dy = p.y - centroid.y, dz = p.z - centroid.z;
@@ -3594,22 +3560,12 @@ export default function App() {
     const normalLen = Math.hypot(planeNormal.x, planeNormal.y, planeNormal.z);
     if (!Number.isFinite(normalLen) || normalLen < 0.1) return fallback;
 
-    // Sign: same hemisphere as current camera to avoid 180° flips.
+    // Pick the hemisphere that faces the current camera to avoid 180° flips.
     const currentDir = fallback.viewDirection;
     const sign = dotGalaxyVector(planeNormal, currentDir) >= 0 ? 1 : -1;
-    const targetNormal = { x: sign*planeNormal.x, y: sign*planeNormal.y, z: sign*planeNormal.z };
+    const finalDir = { x: sign*planeNormal.x, y: sign*planeNormal.y, z: sign*planeNormal.z };
 
-    // Binary search: smallest t where slerp(currentDir, targetNormal, t) passes quality.
-    let lo = 0, hi = 1;
-    for (let iter = 0; iter < 10; iter++) {
-      const mid = (lo + hi) / 2;
-      const blended = slerpGalaxyVector(currentDir, targetNormal, mid);
-      const blendedAxes = getStableGalaxyCameraAxes({ eye: blended, up: fallback.screenUp });
-      if (checkQuality(blendedAxes)) hi = mid; else lo = mid;
-    }
-    const finalDir = slerpGalaxyVector(currentDir, targetNormal, hi);
-
-    // ── Roll optimisation for the chosen direction ─────────────────────────────
+    // Roll optimisation: rotate around finalDir to maximise min angular gap between stems.
     const globalUp = { x: 0, y: 0, z: 1 };
     const dotUpN = dotGalaxyVector(globalUp, finalDir);
     const perpUp = normalizeGalaxyVector({
@@ -3702,65 +3658,46 @@ export default function App() {
     const normalizedFocusPoints = focusPoints.map((focusPoint) => (
       normalizeGalaxyPositionForCamera(getGalaxyPointPosition(focusPoint), frame)
     ));
+
+    // Center strictly on the selected player so it's always in the middle of the view.
     const selectedPosition = normalizedFocusPoints[0];
-    const neighborPositions = normalizedFocusPoints.slice(1);
-    const neighborCenter = neighborPositions.length
-      ? neighborPositions.reduce(
-          (accumulator, position) => ({
-            x: accumulator.x + position.x / neighborPositions.length,
-            y: accumulator.y + position.y / neighborPositions.length,
-            z: accumulator.z + position.z / neighborPositions.length,
-          }),
-          { x: 0, y: 0, z: 0 }
-        )
-      : selectedPosition;
-    const baseCenter = {
-      x: selectedPosition.x * GALAXY_PLAYER_FOCUS_SELECTED_WEIGHT + neighborCenter.x * (1 - GALAXY_PLAYER_FOCUS_SELECTED_WEIGHT),
-      y: selectedPosition.y * GALAXY_PLAYER_FOCUS_SELECTED_WEIGHT + neighborCenter.y * (1 - GALAXY_PLAYER_FOCUS_SELECTED_WEIGHT),
-      z: selectedPosition.z * GALAXY_PLAYER_FOCUS_SELECTED_WEIGHT + neighborCenter.z * (1 - GALAXY_PLAYER_FOCUS_SELECTED_WEIGHT),
-    };
     const viewport = getGalaxyFocusViewport();
     const liveCameraAxes = getStableGalaxyCameraAxes(currentCamera ?? GALAXY_PLAYER_FOCUS_BASE_CAMERA);
     const cameraAxes = computeConstellationOptimalCameraAxes(normalizedFocusPoints, liveCameraAxes);
 
+    // Project all points relative to selected player (center = origin of projection).
     const projectedPoints = normalizedFocusPoints.map((position) => ({
       x: dotGalaxyVector({
-        x: position.x - baseCenter.x,
-        y: position.y - baseCenter.y,
-        z: position.z - baseCenter.z,
+        x: position.x - selectedPosition.x,
+        y: position.y - selectedPosition.y,
+        z: position.z - selectedPosition.z,
       }, cameraAxes.right),
       y: dotGalaxyVector({
-        x: position.x - baseCenter.x,
-        y: position.y - baseCenter.y,
-        z: position.z - baseCenter.z,
+        x: position.x - selectedPosition.x,
+        y: position.y - selectedPosition.y,
+        z: position.z - selectedPosition.z,
       }, cameraAxes.screenUp),
     }));
 
-    const minProjectedX = Math.min(...projectedPoints.map((position) => position.x));
-    const maxProjectedX = Math.max(...projectedPoints.map((position) => position.x));
-    const minProjectedY = Math.min(...projectedPoints.map((position) => position.y));
-    const maxProjectedY = Math.max(...projectedPoints.map((position) => position.y));
-    const projectedWidth = Math.max(maxProjectedX - minProjectedX, GALAXY_PLAYER_FOCUS_MIN_SPAN);
-    const projectedHeight = Math.max(maxProjectedY - minProjectedY, GALAXY_PLAYER_FOCUS_MIN_SPAN);
+    // Use max absolute extent from selected player (not bounding box width) so the
+    // selected player stays centered regardless of how the comps are distributed.
+    const maxExtentX = Math.max(...projectedPoints.map((p) => Math.abs(p.x)), GALAXY_PLAYER_FOCUS_MIN_SPAN / 2);
+    const maxExtentY = Math.max(...projectedPoints.map((p) => Math.abs(p.y)), GALAXY_PLAYER_FOCUS_MIN_SPAN / 2);
     const horizontalFov = 2 * Math.atan(Math.tan(GALAXY_PLAYER_FOCUS_VERTICAL_FOV_RADIANS / 2) * viewport.aspectRatio);
-    const paddedHalfWidth = projectedWidth / Math.max(0.2, GALAXY_PLAYER_FOCUS_VIEWPORT_PADDING_X * 2);
-    const paddedHalfHeight = projectedHeight / Math.max(0.2, GALAXY_PLAYER_FOCUS_VIEWPORT_PADDING_Y * 2);
-    const distanceNeededByWidth = paddedHalfWidth / Math.tan(horizontalFov / 2);
-    const distanceNeededByHeight = paddedHalfHeight / Math.tan(GALAXY_PLAYER_FOCUS_VERTICAL_FOV_RADIANS / 2);
+    const distanceByWidth = maxExtentX / (GALAXY_PLAYER_FOCUS_VIEWPORT_PADDING_X * Math.tan(horizontalFov / 2));
+    const distanceByHeight = maxExtentY / (GALAXY_PLAYER_FOCUS_VIEWPORT_PADDING_Y * Math.tan(GALAXY_PLAYER_FOCUS_VERTICAL_FOV_RADIANS / 2));
     const rawTargetDistance = Math.max(
-      distanceNeededByWidth,
-      distanceNeededByHeight,
-      Math.max(projectedWidth, projectedHeight) * GALAXY_PLAYER_FOCUS_RADIUS_MULTIPLIER
+      distanceByWidth,
+      distanceByHeight,
+      Math.hypot(maxExtentX, maxExtentY) * GALAXY_PLAYER_FOCUS_RADIUS_MULTIPLIER,
     );
-    const targetDistance = rawTargetDistance > GALAXY_PLAYER_FOCUS_MAX_CAMERA_DISTANCE
-      ? Math.min(rawTargetDistance, GALAXY_MAX_CAMERA_DISTANCE)
-      : clamp(rawTargetDistance, GALAXY_PLAYER_FOCUS_MIN_CAMERA_DISTANCE, GALAXY_PLAYER_FOCUS_MAX_CAMERA_DISTANCE);
-    const centerBiasRight = viewport.sidebarBiasRatio;
-    const centerBiasUp = galaxyFullscreenEnabled ? GALAXY_PLAYER_FOCUS_TOP_BIAS_RATIO : 0;
+    const targetDistance = clamp(rawTargetDistance, GALAXY_PLAYER_FOCUS_MIN_CAMERA_DISTANCE, GALAXY_PLAYER_FOCUS_MAX_CAMERA_DISTANCE);
+
+    // Shift center slightly left to keep selected player away from the right sidebar.
     const biasedCenter = {
-      x: baseCenter.x - cameraAxes.right.x * centerBiasRight * targetDistance + cameraAxes.screenUp.x * centerBiasUp * targetDistance,
-      y: baseCenter.y - cameraAxes.right.y * centerBiasRight * targetDistance + cameraAxes.screenUp.y * centerBiasUp * targetDistance,
-      z: baseCenter.z - cameraAxes.right.z * centerBiasRight * targetDistance + cameraAxes.screenUp.z * centerBiasUp * targetDistance,
+      x: selectedPosition.x - cameraAxes.right.x * viewport.sidebarBiasRatio * targetDistance,
+      y: selectedPosition.y - cameraAxes.right.y * viewport.sidebarBiasRatio * targetDistance,
+      z: selectedPosition.z - cameraAxes.right.z * viewport.sidebarBiasRatio * targetDistance,
     };
 
     return {
