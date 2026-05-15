@@ -102,6 +102,9 @@ const GALAXY_FOCUS_MAX_CAMERA_DISTANCE = 0.92;
 const GALAXY_SELECTED_NEIGHBOR_COUNT = 4;
 const GALAXY_PLAYER_FOCUS_BASE_CAMERA = GALAXY_DEFAULT_CAMERA;
 const GALAXY_PLAYER_FOCUS_ZOOM_DISTANCE = 0.32;
+const GALAXY_PLAYER_FOCUS_MAX_ZOOM_DISTANCE = 0.80;
+const GALAXY_PLAYER_FOCUS_VERTICAL_FOV_RADIANS = 1.10;
+const GALAXY_PLAYER_FOCUS_VIEWPORT_PADDING = 0.78;
 const GALAXY_PLAYER_FOCUS_SIDEBAR_BIAS_RATIO = 0.055;
 const GALAXY_CLUSTER_FOCUS_MIN_CAMERA_DISTANCE = 0.42;
 const GALAXY_CLUSTER_FOCUS_MAX_CAMERA_DISTANCE = 0.95;
@@ -3538,7 +3541,7 @@ export default function App() {
   };
 
   // Zoom in on the selected player: keep the current camera direction exactly,
-  // move to a fixed close distance, and pan so the selected player is centered.
+  // use a fixed close distance, but zoom out just enough if any comp would be off-screen.
   const computeSelectedPlayerGalaxyCamera = (pointToFocus, currentCamera) => {
     if (!pointToFocus || !clusterData?.points?.length) return null;
 
@@ -3552,21 +3555,45 @@ export default function App() {
     const safeCamera = currentCamera ?? GALAXY_PLAYER_FOCUS_BASE_CAMERA;
     const { viewDirection, screenUp } = getStableGalaxyCameraAxes(safeCamera);
     const viewport = getGalaxyFocusViewport();
+    const right = normalizeGalaxyVector(crossGalaxyVector(screenUp, viewDirection));
+
+    // Project the 4 comps onto the current view plane and find the minimum
+    // camera distance needed to keep all of them within the viewport.
+    const pointByKey = new Map(clusterData.points.map((p) => [String(p.player_key), p]));
+    const similarEdges = Array.isArray(clusterData.galaxy?.similarity_edges) ? clusterData.galaxy.similarity_edges : [];
+    const neighborPositions = similarEdges
+      .filter((e) => String(e.source) === String(pointToFocus.player_key))
+      .sort((a, b) => Number(a.rank) - Number(b.rank))
+      .slice(0, GALAXY_SELECTED_NEIGHBOR_COUNT)
+      .map((e) => pointByKey.get(String(e.target)))
+      .filter(Boolean)
+      .map((p) => normalizeGalaxyPositionForCamera(getGalaxyPointPosition(p), frame));
+
+    const hFov = 2 * Math.atan(Math.tan(GALAXY_PLAYER_FOCUS_VERTICAL_FOV_RADIANS / 2) * viewport.aspectRatio);
+    const pad = GALAXY_PLAYER_FOCUS_VIEWPORT_PADDING;
+    let fittingDistance = GALAXY_PLAYER_FOCUS_ZOOM_DISTANCE;
+    for (const np of neighborPositions) {
+      const dx = dotGalaxyVector({ x: np.x - selectedPosition.x, y: np.y - selectedPosition.y, z: np.z - selectedPosition.z }, right);
+      const dy = dotGalaxyVector({ x: np.x - selectedPosition.x, y: np.y - selectedPosition.y, z: np.z - selectedPosition.z }, screenUp);
+      const dByX = Math.abs(dx) / (pad * Math.tan(hFov / 2));
+      const dByY = Math.abs(dy) / (pad * Math.tan(GALAXY_PLAYER_FOCUS_VERTICAL_FOV_RADIANS / 2));
+      fittingDistance = Math.max(fittingDistance, dByX, dByY);
+    }
+    const targetDistance = Math.min(fittingDistance, GALAXY_PLAYER_FOCUS_MAX_ZOOM_DISTANCE);
 
     // Shift center slightly left so the selected player clears the right sidebar.
-    const right = normalizeGalaxyVector(crossGalaxyVector(screenUp, viewDirection));
     const center = {
-      x: selectedPosition.x - right.x * viewport.sidebarBiasRatio * GALAXY_PLAYER_FOCUS_ZOOM_DISTANCE,
-      y: selectedPosition.y - right.y * viewport.sidebarBiasRatio * GALAXY_PLAYER_FOCUS_ZOOM_DISTANCE,
-      z: selectedPosition.z - right.z * viewport.sidebarBiasRatio * GALAXY_PLAYER_FOCUS_ZOOM_DISTANCE,
+      x: selectedPosition.x - right.x * viewport.sidebarBiasRatio * targetDistance,
+      y: selectedPosition.y - right.y * viewport.sidebarBiasRatio * targetDistance,
+      z: selectedPosition.z - right.z * viewport.sidebarBiasRatio * targetDistance,
     };
 
     return {
       ...GALAXY_DEFAULT_CAMERA,
       eye: {
-        x: viewDirection.x * GALAXY_PLAYER_FOCUS_ZOOM_DISTANCE,
-        y: viewDirection.y * GALAXY_PLAYER_FOCUS_ZOOM_DISTANCE,
-        z: viewDirection.z * GALAXY_PLAYER_FOCUS_ZOOM_DISTANCE,
+        x: viewDirection.x * targetDistance,
+        y: viewDirection.y * targetDistance,
+        z: viewDirection.z * targetDistance,
       },
       center,
       up: screenUp,
