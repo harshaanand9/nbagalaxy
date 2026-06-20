@@ -2973,7 +2973,7 @@ function WelcomeModal() {
         <div className="welcome-updates">
           <p className="welcome-subline">Wings + Bigs will be added soon!</p>
           <p className="welcome-status">
-            We are in the process of implementing a new player comparison algorithm that outperforms all other publicly available tools. Algorithm has been finished but badge logic has to be done for the newly added players.
+            We are in the process of implementing a new player comparison algorithm that outperforms all other publicly available tools. Algorithm has been completed but not implemented yet due to badge logic needing to be done for newly added players.
           </p>
         </div>
       </div>
