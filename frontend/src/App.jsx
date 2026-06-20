@@ -2970,7 +2970,12 @@ function WelcomeModal() {
           </svg>
         </div>
 
-        <p className="welcome-subline">Wings + Bigs will be added soon!</p>
+        <div className="welcome-updates">
+          <p className="welcome-subline">Wings + Bigs will be added soon!</p>
+          <p className="welcome-status">
+            We are in the process of implementing a new player comparison algorithm that outperforms all other publicly available tools. Algorithm has been finished but badge logic has to be done for the newly added players.
+          </p>
+        </div>
       </div>
     </div>
   );
