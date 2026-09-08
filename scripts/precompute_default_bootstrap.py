@@ -27,6 +27,7 @@ DEFAULT_DATASET = BACKEND_DIR / "data" / "fullseasonfeatures_16_17_25_26.csv"
 DEFAULT_DLEBRON_DATASET = BACKEND_DIR / "data" / "fullseasonfeatures_player_comps_real.csv"
 DEFAULT_PULLUP_DATASET = Path("/Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_13_14_25_26_pullup.csv")
 DEFAULT_OUTPUT = REPO_ROOT / "frontend" / "public" / "precomputed" / "default_bootstrap.json"
+DEFAULT_FULL_OUTPUT = REPO_ROOT / "frontend" / "public" / "precomputed" / "default_bootstrap.full.json"
 
 
 def first_existing_path(paths: list[Path]) -> Path:
@@ -62,7 +63,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         default=str(DEFAULT_OUTPUT),
-        help="Static frontend JSON path to write.",
+        help="Slim bootstrap written for deploy (config + cluster only).",
+    )
+    parser.add_argument(
+        "--full-output",
+        default=str(DEFAULT_FULL_OUTPUT),
+        help="Full bootstrap written for local dev, including click-time caches.",
     )
     return parser.parse_args()
 
@@ -73,6 +79,7 @@ def main() -> None:
     dlebron_dataset_path = Path(args.dlebron_dataset).expanduser().resolve()
     pullup_dataset_path = Path(args.pullup_dataset).expanduser().resolve()
     output_path = Path(args.output).expanduser().resolve()
+    full_output_path = Path(args.full_output).expanduser().resolve()
 
     backend_app.DEFAULT_DATASET_PATH = str(dataset_path)
     backend_app.PLAYER_COMPS_DATASET_PATH = str(dlebron_dataset_path)
@@ -133,8 +140,23 @@ def main() -> None:
         "cluster_reports_by_number": cluster_reports_by_number,
     }
 
-    write_compact_json(output_path, payload)
-    print(f"Wrote default bootstrap payload to: {output_path}")
+    # The deployed bootstrap carries only what the galaxy needs to draw itself.
+    # player_details_by_key and cluster_reports_by_number are click-time caches --
+    # App.jsx reads them with `?? {}` and falls back to the API when they are
+    # absent -- and together they push the file past GitHub's 100 MB limit, which
+    # is what Vercel deploys from. The full payload stays local and gitignored so
+    # `npm run dev` needs no backend running.
+    CACHE_KEYS = ("player_details_by_key", "cluster_reports_by_number")
+    slim_payload = {key: value for key, value in payload.items() if key not in CACHE_KEYS}
+    slim_payload["manifest"] = {**payload["manifest"], "payload_scope": "slim"}
+    payload["manifest"] = {**payload["manifest"], "payload_scope": "full"}
+
+    write_compact_json(output_path, slim_payload)
+    write_compact_json(full_output_path, payload)
+    slim_mb = output_path.stat().st_size / 1048576
+    full_mb = full_output_path.stat().st_size / 1048576
+    print(f"Wrote slim bootstrap (deployed) to: {output_path}  [{slim_mb:.1f} MB]")
+    print(f"Wrote full bootstrap (local dev)  to: {full_output_path}  [{full_mb:.1f} MB]")
     print(f"Players: {len(player_details_by_key)}")
     print(f"Cluster reports: {len(cluster_reports_by_number)}")
 

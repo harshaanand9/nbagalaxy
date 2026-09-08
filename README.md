@@ -342,13 +342,29 @@ npm install
 npm run dev
 ```
 
-The first-load payload `frontend/public/precomputed/default_bootstrap.json` is a derived
-artifact and is not in git -- it is larger than GitHub's 100 MB file limit. Generate it
-once from a fresh clone before `npm run dev`, or the app will have no data to show:
+### The two bootstrap files
 
-```bash
-python3 scripts/precompute_default_bootstrap.py
-```
+`scripts/precompute_default_bootstrap.py` writes the first-load payload twice:
+
+| File | Size | In git | Used by |
+| --- | --- | --- | --- |
+| `default_bootstrap.json` | ~18 MB | yes | the deployed site |
+| `default_bootstrap.full.json` | ~108 MB | no | local `npm run dev` |
+
+Both draw the same galaxy -- same players, same archetypes. The full one additionally
+bundles every player-detail panel and cluster report, so `npm run dev` needs no backend
+running on `:8000`. That extra 90 MB is a click-time cache: `App.jsx` reads those two keys
+with `?? {}` and falls back to the API when they are absent, which is what the deployed
+site does. It has to, because the full file is past GitHub's 100 MB limit and Vercel
+deploys from GitHub.
+
+`App.jsx` picks between them on its own: `import.meta.env.DEV` is replaced at build time,
+so `npm run dev` tries the full file first and a production build requests only the slim
+one. Nothing to configure, and no wasted request in production. Setting
+`VITE_DEFAULT_BOOTSTRAP_URL` still overrides both.
+
+From a fresh clone the slim file is already there and the site renders; generate the full
+one only if you want detail panels without running the backend.
 
 ## Badge icons
 

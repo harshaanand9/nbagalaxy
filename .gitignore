@@ -24,7 +24,9 @@ outputs/
 # scripts/precompute_similarity_v4.py; the backend reads similarity_v4.json.
 backend/data/similarity_v4_comps.csv
 
-# First-load payload for the frontend. Regenerate with
-# scripts/precompute_default_bootstrap.py (or precompute_all_site_assets.py);
-# it is a derived artifact and exceeds GitHub's 100 MB file limit.
-frontend/public/precomputed/default_bootstrap.json
+# Local-dev copy of the first-load payload, with the click-time caches included
+# so `npm run dev` needs no backend running. ~108 MB, past GitHub's 100 MB limit.
+# The slim default_bootstrap.json beside it IS committed and is what deploys.
+# Both are written by scripts/precompute_default_bootstrap.py.
+frontend/public/precomputed/default_bootstrap.full.json
+frontend/.env*.local

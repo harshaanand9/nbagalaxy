@@ -5,7 +5,16 @@ import { BADGE_META, BADGE_TIER_LABELS } from "./badges";
 import "./styles.css";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-const DEFAULT_BOOTSTRAP_URL = import.meta.env.VITE_DEFAULT_BOOTSTRAP_URL || "/precomputed/default_bootstrap.json";
+// Tried in order. The full payload is gitignored (~108 MB) and bundles the player-detail
+// and cluster-report caches, so `npm run dev` needs no backend on :8000. The slim payload
+// is the committed one and is what deploys; it drops those two caches to clear GitHub's
+// 100 MB limit, and the app fetches them from the API instead. `import.meta.env.DEV` is
+// replaced at build time, so production never requests the file it does not have.
+const DEFAULT_BOOTSTRAP_URLS = [
+  import.meta.env.VITE_DEFAULT_BOOTSTRAP_URL,
+  import.meta.env.DEV ? "/precomputed/default_bootstrap.full.json" : null,
+  "/precomputed/default_bootstrap.json",
+].filter(Boolean);
 const SYNERGY_NOTE =
   "This stat uses Synergy defined offensive possessions instead of PBPStats derived offensive possessions.";
 
@@ -4256,12 +4265,23 @@ export default function App() {
 
     const loadStartupData = async () => {
       try {
-        const bootstrapResponse = await fetch(DEFAULT_BOOTSTRAP_URL);
-        if (!bootstrapResponse.ok) {
-          throw new Error(`Bootstrap unavailable (${bootstrapResponse.status})`);
+        let bootstrapPayload = null;
+        let lastBootstrapError = null;
+        for (const bootstrapUrl of DEFAULT_BOOTSTRAP_URLS) {
+          try {
+            const bootstrapResponse = await fetch(bootstrapUrl);
+            if (!bootstrapResponse.ok) {
+              throw new Error(`Bootstrap unavailable (${bootstrapResponse.status})`);
+            }
+            bootstrapPayload = await bootstrapResponse.json();
+            break;
+          } catch (bootstrapError) {
+            lastBootstrapError = bootstrapError;
+          }
         }
-
-        const bootstrapPayload = await bootstrapResponse.json();
+        if (!bootstrapPayload) {
+          throw lastBootstrapError ?? new Error("Bootstrap unavailable");
+        }
         const bootstrapConfig = bootstrapPayload?.config;
         const bootstrapCluster = bootstrapPayload?.cluster;
         if (!bootstrapConfig || !bootstrapCluster?.points?.length) {
