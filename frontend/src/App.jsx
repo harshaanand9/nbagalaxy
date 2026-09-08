@@ -4424,15 +4424,25 @@ export default function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_key: selectedPoint.player_key }),
     })
-      .then((r) => r.json())
-      .then((data) => {
+      .then(async (response) => {
+        // Without the !response.ok guard an error body -- {"detail": "Player row
+        // not found."} from a backend whose dataset predates this player -- was
+        // cached and rendered as if it were a detail panel, and the missing
+        // fields threw during render, blanking the whole app.
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || 'Player detail request failed.');
+        }
         if (!cancelled) {
           playerDetailCacheRef.current.set(String(selectedPoint.player_key), data);
           setSelectedDetail(data);
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(`Failed to load player detail: ${String(err)}`);
+        if (!cancelled) {
+          setSelectedDetail(null);
+          setError(`Failed to load player detail: ${String(err)}`);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoadingDetail(false);
