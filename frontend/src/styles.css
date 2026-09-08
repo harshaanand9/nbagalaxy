@@ -2702,8 +2702,11 @@ input {
 .similar-players-view {
   flex: 1 1 auto;
   min-height: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  /* Flex, not grid: the v4 domain tabs are a conditional third child, and a
+     two-track grid auto-placed them into the body's row so the cards painted
+     over them. A column flex stacks however many children there are. */
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   padding: 12px;
   border: 1px solid rgba(0, 212, 224, 0.13);
@@ -2741,6 +2744,7 @@ input {
 }
 
 .similar-players-body {
+  flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
   padding-right: 2px;
@@ -6426,26 +6430,35 @@ input {
    v4 similarity model: domain tabs, offense/defense identity bar, attention
    --------------------------------------------------------------------------- */
 .similarity-v4-controls {
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 0 14px 10px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid rgba(0, 212, 224, 0.12);
 }
 
+/* Compact segmented control rather than three full-width bars, which read as
+   empty panels behind the cards at wide viewports. */
 .similarity-domain-tabs {
-  display: flex;
-  gap: 6px;
+  display: inline-flex;
+  gap: 4px;
+  align-self: flex-start;
+  padding: 3px;
+  border: 1px solid rgba(0, 212, 224, 0.18);
+  background: rgba(2, 9, 11, 0.72);
+  border-radius: 3px;
 }
 
 .similarity-domain-tab {
-  flex: 1;
-  padding: 7px 10px;
+  min-width: 92px;
+  padding: 7px 16px;
   border: 1px solid rgba(0, 212, 224, 0.22);
   background: rgba(2, 9, 11, 0.55);
   color: var(--muted);
   font-family: inherit;
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
+  font-size: 11px;
+  letter-spacing: 0.12em;
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
@@ -6605,5 +6618,66 @@ input {
 @media (max-width: 720px) {
   .similarity-attention-columns {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Advanced Mode -------------------------------------------------------- */
+
+.similarity-advanced-btn {
+  padding: 8px 14px;
+  border: 1px solid rgba(183, 122, 254, 0.4);
+  background: rgba(2, 9, 11, 0.6);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.similarity-advanced-btn:hover {
+  color: var(--text);
+  border-color: rgba(183, 122, 254, 0.7);
+}
+
+.similarity-advanced-btn.is-active {
+  background: rgba(183, 122, 254, 0.16);
+  border-color: rgba(183, 122, 254, 0.85);
+  color: var(--text);
+}
+
+/* Two columns so all six components fit without stretching the card. */
+.similar-component-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.similar-component-score {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 1px solid rgba(183, 122, 254, 0.18);
+  background: rgba(183, 122, 254, 0.05);
+}
+
+.similar-component-score span {
+  color: var(--muted);
+  font-size: 8.5px;
+  letter-spacing: 0.07em;
+}
+
+.similar-component-score strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .similar-component-grid {
+    grid-template-columns: 1fr;
   }
 }

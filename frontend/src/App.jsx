@@ -1082,6 +1082,17 @@ function normalizeComparableValue(value = "") {
 // from the CDN, so opening a player never waits on the backend -- no cold start, and
 // no 404 from a backend whose dataset predates the player. Written by
 // scripts/precompute_static_player_assets.py; this slug must match its slugify().
+// Advanced Mode breakdown. Keys match scripts/precompute_similarity_components.py,
+// which derives them from the model's own per-block split of the pair distance.
+const COMPONENT_ORDER = [
+  ["ThreePT", "3PT"],
+  ["MidRange", "MID RANGE"],
+  ["RimPressure", "RIM PRESSURE"],
+  ["Playmaking", "PLAYMAKING"],
+  ["Playtypes", "PLAYTYPES"],
+  ["Defense", "DEFENSE"],
+];
+
 function playerAssetSlug(playerKey) {
   return String(playerKey ?? "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
@@ -1565,6 +1576,7 @@ function SimilarPlayersView({
       : "NO_PLAYER_SELECTED";
   const [similarityDomain, setSimilarityDomain] = useState("overall");
   const [attentionOpen, setAttentionOpen] = useState(false);
+  const [advancedMode, setAdvancedMode] = useState(false);
   const [similarityMethodologyOpen, setSimilarityMethodologyOpen] = useState(false);
   const [blockedEuclideanOpen, setBlockedEuclideanOpen] = useState(false);
 
@@ -1598,6 +1610,15 @@ function SimilarPlayersView({
             Similarity Methodology
           </button>
           <button type="button" className="career-path-back-btn" onClick={onBack}>BACK_TO_GALAXY</button>
+          <button
+            type="button"
+            className={`similarity-advanced-btn${advancedMode ? " is-active" : ""}`}
+            onClick={() => setAdvancedMode((previousValue) => !previousValue)}
+            aria-pressed={advancedMode}
+            title="Break each comparison into 3PT, Mid Range, Rim Pressure, Playmaking, Playtypes and Defense"
+          >
+            {advancedMode ? "ADVANCED_MODE: ON" : "Advanced Mode"}
+          </button>
         </div>
       </div>
 
@@ -1807,6 +1828,20 @@ function SimilarPlayersView({
                   <span>MAIN_DIFFERENCES</span>
                   <p>{player.biggest_difference_blocks || "—"}</p>
                 </div>
+
+                {isV4 && advancedMode && player.components && (
+                  <>
+                    <div className="similar-player-section-label">COMPONENT_SIMILARITY</div>
+                    <div className="similar-component-grid">
+                      {COMPONENT_ORDER.map(([componentKey, componentLabel]) => (
+                        <div key={`${player.rank}-${componentKey}`} className="similar-component-score">
+                          <span>{componentLabel}</span>
+                          <strong>{formatSimilarityScore(player.components[componentKey])}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
 
                 {isV4 ? (
                   <>

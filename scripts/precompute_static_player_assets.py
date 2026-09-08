@@ -54,6 +54,41 @@ def write_json(path: Path, payload: Any) -> int:
     return len(text.encode("utf-8"))
 
 
+def attach_components(comps_payload, per_domain, block_names) -> None:
+    """Add Advanced Mode components and the filtered MAIN_SIMILARITIES in place.
+
+    `strongest_similarity_blocks` is rewritten to only name concepts BOTH players
+    are at or above league average in. The comp order, the scores and every
+    ranking stay exactly as the model produced them; this only changes which
+    labels get shown. `most_alike_blocks` keeps the unfiltered list.
+    """
+    if not per_domain:
+        return
+    for domain, entries in (comps_payload.get("comps") or {}).items():
+        by_target = per_domain.get(domain) or {}
+        for entry in entries:
+            # expand_similarity_v4_comp names the key player_season_id.
+            row = by_target.get(entry.get("player_season_id") or entry.get("player_key"))
+            if not row:
+                continue
+            entry["components"] = row["components"]
+            shared = [block_names[b] for b in row["shared_block_ids"] if 0 <= b < len(block_names)]
+            entry["shared_blocks"] = shared
+            if shared:
+                entry["strongest_similarity_blocks"] = ", ".join(shared)
+    # `similar_players` is the OVERALL list under another name; keep it in step.
+    overall = {
+        e.get("player_season_id") or e.get("player_key"): e
+        for e in (comps_payload.get("comps") or {}).get("overall", [])
+    }
+    for entry in comps_payload.get("similar_players", []) or []:
+        source = overall.get(entry.get("player_season_id") or entry.get("player_key"))
+        if source and "components" in source:
+            entry["components"] = source["components"]
+            entry["shared_blocks"] = source["shared_blocks"]
+            entry["strongest_similarity_blocks"] = source["strongest_similarity_blocks"]
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--full-bootstrap", default=str(FULL_BOOTSTRAP))
@@ -95,6 +130,29 @@ def main() -> None:
     v4_players = (v4_payload or {}).get("players", {})
     print(f"v4 similarity entries: {len(v4_players)}")
 
+    # Per-component similarity and the presence-filtered shared concepts, from
+    # scripts/precompute_similarity_components.py. Optional: without it the comps
+    # still ship, just with no Advanced Mode data and the unfiltered similarities.
+    components_path = REPO_ROOT / "backend" / "data" / "similarity_components.json"
+    components_by_source = {}
+    component_block_names = []
+    if components_path.exists():
+        components_asset = json.loads(components_path.read_text())
+        component_block_names = components_asset.get("block_names", [])
+        v4_keys = (v4_payload or {}).get("player_keys", [])
+        for source_key, domains in components_asset.get("players", {}).items():
+            per_domain = {}
+            for domain, rows in domains.items():
+                per_domain[domain] = {
+                    v4_keys[row["target_index"]]: row
+                    for row in rows
+                    if 0 <= row["target_index"] < len(v4_keys)
+                }
+            components_by_source[source_key] = per_domain
+        print(f"component entries: {len(components_by_source)}")
+    else:
+        print(f"WARNING: {components_path.name} missing -- no Advanced Mode data")
+
     todo = points[: args.limit] if args.limit else points
     counts = {"players": 0, "comps": 0, "skill_failed": 0, "threept_failed": 0, "comps_missing": 0}
     bytes_players = bytes_comps = 0
@@ -126,6 +184,7 @@ def main() -> None:
                 source_point=point, source_key=key, entry=entry,
                 payload=v4_payload, point_by_key=point_by_key,
             )
+            attach_components(comps, components_by_source.get(key), component_block_names)
             bytes_comps += write_json(out_dir / "comps" / f"{slug}.json", comps)
             counts["comps"] += 1
         else:
