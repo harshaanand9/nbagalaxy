@@ -2317,236 +2317,6 @@ function ThreePtBreakdownView({ data, sourcePoint, loading, error, onBack }) {
 }
 
 
-function normalizePlayerComparisonIdentityValue(value) {
-  return String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
-}
-
-function findPlayerComparisonOptionForPoint(point, options) {
-  const players = Array.isArray(options?.players) ? options.players : [];
-  if (!point || !players.length) return null;
-
-  const pointName = normalizePlayerComparisonIdentityValue(point.player_name || point.name || point["Player Name"]);
-  const pointSeason = normalizePlayerComparisonIdentityValue(point.season || point.Season);
-  const pointTeam = normalizePlayerComparisonIdentityValue(point.teams_played || point.team || point.TEAM || point.team_abbreviation);
-  const pointPosition = normalizePlayerComparisonIdentityValue(point.position || point.pos || point.POS);
-  if (!pointName || !pointSeason) return null;
-
-  const exactMatch = players.find((player) => (
-    normalizePlayerComparisonIdentityValue(player.player_name) === pointName &&
-    normalizePlayerComparisonIdentityValue(player.season) === pointSeason &&
-    (!pointTeam || normalizePlayerComparisonIdentityValue(player.team) === pointTeam) &&
-    (!pointPosition || normalizePlayerComparisonIdentityValue(player.position) === pointPosition)
-  ));
-  if (exactMatch) return exactMatch;
-
-  return players.find((player) => (
-    normalizePlayerComparisonIdentityValue(player.player_name) === pointName &&
-    normalizePlayerComparisonIdentityValue(player.season) === pointSeason
-  )) || null;
-}
-
-function PlayerComparisonPlayerCard({ player, slotLabel, onClick }) {
-  return (
-    <button type="button" className={`player-comparison-card ${player ? "selected" : "empty"}`} onClick={onClick}>
-      {player ? (
-        <>
-          <div className="player-comparison-headshot-wrap">
-            <img
-              className="player-comparison-headshot"
-              src={player.headshot_url || player.headshotUrl || "/headshots/fallback.svg"}
-              alt=""
-              loading="lazy"
-            />
-          </div>
-          <div className="player-comparison-card-name">{player.player_name}</div>
-          <div className="player-comparison-card-meta">{player.season} · {player.team || "—"} · {player.position || "—"}</div>
-          {(player.archetype_name || player.cluster_name) && (
-            <div className="player-comparison-card-archetype">{player.archetype_name || player.cluster_name}</div>
-          )}
-          <PlayerBadges badges={player.badges || []} compact interactive={false} />
-          <div className="player-comparison-card-action">CHANGE PLAYER</div>
-        </>
-      ) : (
-        <>
-          <div className="player-comparison-empty-plus">+</div>
-          <div className="player-comparison-card-name">{slotLabel}</div>
-          <div className="player-comparison-card-meta">Click to search player-seasons</div>
-        </>
-      )}
-    </button>
-  );
-}
-
-function PlayerComparisonView({
-  options,
-  selectedPlayerKeys,
-  onSelectedPlayerKeysChange,
-  category,
-  onCategoryChange,
-  mode,
-  onModeChange,
-  data,
-  loading,
-  error,
-  optionsLoading,
-  optionsError,
-  onBack,
-}) {
-  const [activeSlot, setActiveSlot] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const players = Array.isArray(options?.players) ? options.players : [];
-
-  const playerByKey = useMemo(() => {
-    const lookup = new Map();
-    players.forEach((player) => lookup.set(String(player.player_key), player));
-    if (Array.isArray(data?.players)) {
-      data.players.forEach((player) => lookup.set(String(player.player_key), player));
-    }
-    return lookup;
-  }, [players, data]);
-
-  const selectedPlayers = selectedPlayerKeys.map((playerKey) => (
-    playerKey ? playerByKey.get(String(playerKey)) || null : null
-  ));
-
-  const openSearchForSlot = (slotIndex) => {
-    setActiveSlot(slotIndex);
-    setSearchQuery("");
-  };
-
-  const filteredPlayers = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    if (!normalizedQuery) return players.slice(0, 36);
-    return players
-      .filter((player) => `${player.player_name} ${player.season} ${player.team} ${player.position}`.toLowerCase().includes(normalizedQuery))
-      .slice(0, 48);
-  }, [players, searchQuery]);
-
-  const handleChoosePlayer = (player) => {
-    if (activeSlot == null || !player) return;
-    const nextKeys = [...selectedPlayerKeys];
-    nextKeys[activeSlot] = player.player_key;
-    onSelectedPlayerKeysChange(nextKeys);
-    setActiveSlot(null);
-    setSearchQuery("");
-  };
-
-  const rows = Array.isArray(data?.rows) ? data.rows : [];
-  const canShowRows = selectedPlayerKeys.filter(Boolean).length === 2;
-
-  return (
-    <div className="player-comparison-view">
-      <div className="skill-breakdown-header player-comparison-header">
-        <div>
-          <div className="section-header">// PLAYER_COMPARISON</div>
-          <div className="skill-breakdown-title">Player Comps Lab</div>
-          <div className="skill-breakdown-subtitle">
-            Select two player-seasons, then switch stat category or display mode. Default view starts with traditional box-score stats.
-          </div>
-        </div>
-        <div className="skill-breakdown-header-actions">
-          <button type="button" className="career-path-back-btn" onClick={onBack}>BACK_TO_GALAXY</button>
-        </div>
-      </div>
-
-      <div className="player-comparison-picker-row">
-        <PlayerComparisonPlayerCard player={selectedPlayers[0]} slotLabel="PLAYER A" onClick={() => openSearchForSlot(0)} />
-        <PlayerComparisonPlayerCard player={selectedPlayers[1]} slotLabel="PLAYER B" onClick={() => openSearchForSlot(1)} />
-      </div>
-
-      <div className="player-comparison-controls">
-        <label>
-          <span>STAT CATEGORY</span>
-          <select value={category} onChange={(event) => onCategoryChange(event.target.value)}>
-            {PLAYER_COMPARISON_CATEGORY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>DISPLAY MODE</span>
-          <select value={mode} onChange={(event) => onModeChange(event.target.value)}>
-            {PLAYER_COMPARISON_MODE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {optionsLoading && <div className="skill-breakdown-empty player-comparison-status">LOADING_PLAYER_OPTIONS...</div>}
-      {!optionsLoading && optionsError && <div className="skill-breakdown-empty skill-breakdown-error player-comparison-status">{optionsError}</div>}
-      {!optionsLoading && !optionsError && !canShowRows && (
-        <div className="skill-breakdown-empty player-comparison-status">SELECT_TWO_PLAYER_SEASONS_TO_COMPARE</div>
-      )}
-      {!optionsLoading && !optionsError && canShowRows && loading && (
-        <div className="skill-breakdown-empty player-comparison-status">LOADING_COMPARISON...</div>
-      )}
-      {!optionsLoading && !optionsError && canShowRows && !loading && error && (
-        <div className="skill-breakdown-empty skill-breakdown-error player-comparison-status">{error}</div>
-      )}
-
-      {!optionsLoading && !optionsError && canShowRows && !loading && !error && (
-        <div className="player-comparison-table-shell">
-          <div className="player-comparison-table-header">
-            <div>{selectedPlayers[0]?.player_name ?? data?.players?.[0]?.player_name ?? "PLAYER A"}</div>
-            <div>STAT</div>
-            <div>{selectedPlayers[1]?.player_name ?? data?.players?.[1]?.player_name ?? "PLAYER B"}</div>
-          </div>
-          <div className="player-comparison-table-body">
-            {rows.length ? rows.map((row) => (
-              <div className="player-comparison-row" key={`${row.feature}-${row.label}`}>
-                <div className={`player-comparison-value ${row.winner === "left" ? "winner" : ""}`}>{row.display_values?.[0] ?? "—"}</div>
-                <div className="player-comparison-stat-label">
-                  <span>{row.label}</span>
-                  {row.lower_is_better && <small>LOWER IS BETTER</small>}
-                </div>
-                <div className={`player-comparison-value ${row.winner === "right" ? "winner" : ""}`}>{row.display_values?.[1] ?? "—"}</div>
-              </div>
-            )) : (
-              <div className="player-comparison-empty-table">NO_AVAILABLE_ROWS_FOR_THIS_CATEGORY_AND_MODE</div>
-            )}
-          </div>
-          {Array.isArray(data?.missing_features) && data.missing_features.length > 0 && (
-            <div className="player-comparison-missing-note">
-              Missing columns skipped: {data.missing_features.slice(0, 10).join(", ")}{data.missing_features.length > 10 ? "..." : ""}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeSlot != null && (
-        <div className="player-comparison-search-panel">
-          <div className="player-comparison-search-header">
-            <span>SELECT_PLAYER_{activeSlot === 0 ? "A" : "B"}</span>
-            <button type="button" onClick={() => setActiveSlot(null)}>CLOSE</button>
-          </div>
-          <input
-            autoFocus
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search player, season, or team..."
-          />
-          <div className="player-comparison-search-results">
-            {optionsLoading && <div className="player-comparison-no-results">LOADING_PLAYER_OPTIONS...</div>}
-            {!optionsLoading && optionsError && <div className="player-comparison-no-results">{optionsError}</div>}
-            {!optionsLoading && !optionsError && filteredPlayers.map((player) => (
-              <button type="button" key={player.player_key} onClick={() => handleChoosePlayer(player)}>
-                <img src={player.headshot_url || "/headshots/fallback.svg"} alt="" loading="lazy" />
-                <span>
-                  <strong>{player.player_name}</strong>
-                  <small>{player.season} · {player.team || "—"} · {player.position || "—"}</small>
-                </span>
-              </button>
-            ))}
-            {!optionsLoading && !optionsError && !filteredPlayers.length && <div className="player-comparison-no-results">NO_MATCHES</div>}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
 function CareerPathView({
   playerName,
   timeline = [],
@@ -3354,15 +3124,6 @@ export default function App() {
   const [threePtBreakdownData, setThreePtBreakdownData] = useState(null);
   const [loadingThreePtBreakdown, setLoadingThreePtBreakdown] = useState(false);
   const [threePtBreakdownError, setThreePtBreakdownError] = useState("");
-  const [playerComparisonOptions, setPlayerComparisonOptions] = useState(null);
-  const [loadingPlayerComparisonOptions, setLoadingPlayerComparisonOptions] = useState(false);
-  const [playerComparisonOptionsError, setPlayerComparisonOptionsError] = useState("");
-  const [playerComparisonData, setPlayerComparisonData] = useState(null);
-  const [loadingPlayerComparison, setLoadingPlayerComparison] = useState(false);
-  const [playerComparisonError, setPlayerComparisonError] = useState("");
-  const [playerComparisonSelectedKeys, setPlayerComparisonSelectedKeys] = useState([null, null]);
-  const [playerComparisonCategory, setPlayerComparisonCategory] = useState("traditional");
-  const [playerComparisonMode, setPlayerComparisonMode] = useState("raw_stats");
   const [clusterSummaryStatMode, setClusterSummaryStatMode] = useState("median");
   const [clusterSummaryValueMode, setClusterSummaryValueMode] = useState("percentile");
   const [viewTransitionActive, setViewTransitionActive] = useState(false);
@@ -3413,9 +3174,8 @@ export default function App() {
   const similarPlayersViewEnabled = activeCenterView === "similar_players";
   const skillBreakdownViewEnabled = activeCenterView === "skill_breakdown";
   const threePtBreakdownViewEnabled = activeCenterView === "three_pt_breakdown";
-  const playerComparisonViewEnabled = activeCenterView === "player_comparison";
   const playerReportIdleVisible = activeCenterView === "plot" && !selectedPoint && !selectedCareerMissingSeason;
-  const nonScatterViewEnabled = clusterDescriptionViewEnabled || careerPathViewEnabled || similarPlayersViewEnabled || skillBreakdownViewEnabled || threePtBreakdownViewEnabled || playerComparisonViewEnabled;
+  const nonScatterViewEnabled = clusterDescriptionViewEnabled || careerPathViewEnabled || similarPlayersViewEnabled || skillBreakdownViewEnabled || threePtBreakdownViewEnabled;
   const currentAlgorithm = "kmeans";
   const isFuzzyMode = false;
   const isEuclideanKmeansLockedMode =
@@ -4719,122 +4479,6 @@ export default function App() {
   }, [threePtBreakdownViewEnabled, selectedPoint, clusterData, selectedAlgorithm, selectedDistanceMetric, activeClusterCount, requestFeatures]);
 
   useEffect(() => {
-    if (!playerComparisonViewEnabled) {
-      setPlayerComparisonOptionsError("");
-      return undefined;
-    }
-
-    if (playerComparisonOptions) return undefined;
-
-    let cancelled = false;
-    setLoadingPlayerComparisonOptions(true);
-    setPlayerComparisonOptionsError("");
-
-    fetchStaticAsset(`/precomputed/comparison_options.json`)
-      .then((asset) => {
-        if (asset) return asset;
-        return fetch(`${API_BASE}/api/player-comparison-options`).then(async (response) => {
-          const data = await response.json();
-          if (!response.ok) {
-            throw new Error(data.detail || "Player comparison options request failed.");
-          }
-          return data;
-        });
-      })
-      .then((data) => {
-        if (!cancelled) {
-          setPlayerComparisonOptions(data);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setPlayerComparisonOptions(null);
-          setPlayerComparisonOptionsError(String(err));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadingPlayerComparisonOptions(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [playerComparisonViewEnabled, playerComparisonOptions]);
-
-  useEffect(() => {
-    if (!playerComparisonViewEnabled) {
-      setPlayerComparisonError("");
-      return undefined;
-    }
-
-    if (!playerComparisonOptions || playerComparisonOptionsError) {
-      setPlayerComparisonData(null);
-      setLoadingPlayerComparison(false);
-      setPlayerComparisonError("");
-      return undefined;
-    }
-
-    const validOptionKeys = new Set((playerComparisonOptions.players || []).map((player) => String(player.player_key)));
-    const activeKeys = playerComparisonSelectedKeys.filter((playerKey) => playerKey && validOptionKeys.has(String(playerKey)));
-    if (activeKeys.length !== 2) {
-      setPlayerComparisonData(null);
-      setLoadingPlayerComparison(false);
-      setPlayerComparisonError("");
-      return undefined;
-    }
-
-    let cancelled = false;
-    setLoadingPlayerComparison(true);
-    setPlayerComparisonError("");
-
-    fetch(`${API_BASE}/api/player-comparison`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        player_keys: activeKeys,
-        category: playerComparisonCategory,
-        mode: playerComparisonMode,
-      }),
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.detail || "Player comparison request failed.");
-        }
-        if (!cancelled) {
-          setPlayerComparisonData(data);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setPlayerComparisonData(null);
-          setPlayerComparisonError(String(err));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoadingPlayerComparison(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [playerComparisonViewEnabled, playerComparisonOptions, playerComparisonOptionsError, playerComparisonSelectedKeys, playerComparisonCategory, playerComparisonMode]);
-
-  useEffect(() => {
-    if (!playerComparisonViewEnabled || !selectedPoint || !playerComparisonOptions || playerComparisonOptionsError) return;
-    setPlayerComparisonSelectedKeys((previousKeys) => {
-      if (previousKeys?.[0]) return previousKeys;
-      const matchingPlayer = findPlayerComparisonOptionForPoint(selectedPoint, playerComparisonOptions);
-      if (!matchingPlayer?.player_key) return previousKeys;
-      return [matchingPlayer.player_key, previousKeys?.[1] ?? null];
-    });
-  }, [playerComparisonViewEnabled, selectedPoint, playerComparisonOptions, playerComparisonOptionsError]);
-
-  useEffect(() => {
     if (!hoveredSelectorFeature) return undefined;
 
     const updateTooltipSize = () => {
@@ -5086,20 +4730,6 @@ export default function App() {
     setSelectedCareerMissingSeason(null);
     setShowAllFeatures(false);
     transitionToCenterView("three_pt_breakdown");
-  };
-
-  const handleOpenPlayerComparison = () => {
-    setSelectedCareerMissingSeason(null);
-    setGalaxyBestWorstOpen(false);
-    setShowAllFeatures(false);
-    setPlayerComparisonError("");
-    setPlayerComparisonData(null);
-    setPlayerComparisonSelectedKeys((previousKeys) => {
-      if (!selectedPoint || !playerComparisonOptions) return [null, previousKeys?.[1] ?? null];
-      const matchingPlayer = findPlayerComparisonOptionForPoint(selectedPoint, playerComparisonOptions);
-      return [matchingPlayer?.player_key ?? null, previousKeys?.[1] ?? null];
-    });
-    transitionToCenterView("player_comparison");
   };
 
   const handleSelectSimilarPlayer = (similarPlayer) => {
@@ -6996,7 +6626,7 @@ export default function App() {
             {loadingClusters && <div className="loading-overlay">{galaxyPlotEnabled ? "LOADING_GALAXY..." : "LOADING_SCATTER..."}</div>}
             {!loadingClusters && error && <div className="error-box">{error}</div>}
 
-            <div className={`plot-chart-stage ${clusterDescriptionViewEnabled ? "cluster-description-active" : ""} ${careerPathViewEnabled ? "career-path-active" : ""} ${similarPlayersViewEnabled ? "similar-players-active" : ""} ${skillBreakdownViewEnabled ? "skill-breakdown-active" : ""} ${threePtBreakdownViewEnabled ? "three-pt-breakdown-active" : ""} ${playerComparisonViewEnabled ? "player-comparison-active" : ""}`}>
+            <div className={`plot-chart-stage ${clusterDescriptionViewEnabled ? "cluster-description-active" : ""} ${careerPathViewEnabled ? "career-path-active" : ""} ${similarPlayersViewEnabled ? "similar-players-active" : ""} ${skillBreakdownViewEnabled ? "skill-breakdown-active" : ""} ${threePtBreakdownViewEnabled ? "three-pt-breakdown-active" : ""}`}>
               {clusterDescriptionViewEnabled ? (
                 <ClusterDescriptionView
                   report={selectedClusterReport}
@@ -7004,22 +6634,6 @@ export default function App() {
                   onBack={handleBackToGalaxy}
                   loading={loadingClusterReport}
                   error={clusterReportError}
-                />
-              ) : playerComparisonViewEnabled ? (
-                <PlayerComparisonView
-                  options={playerComparisonOptions}
-                  selectedPlayerKeys={playerComparisonSelectedKeys}
-                  onSelectedPlayerKeysChange={setPlayerComparisonSelectedKeys}
-                  category={playerComparisonCategory}
-                  onCategoryChange={setPlayerComparisonCategory}
-                  mode={playerComparisonMode}
-                  onModeChange={setPlayerComparisonMode}
-                  data={playerComparisonData}
-                  loading={loadingPlayerComparison}
-                  error={playerComparisonError}
-                  optionsLoading={loadingPlayerComparisonOptions}
-                  optionsError={playerComparisonOptionsError}
-                  onBack={handleBackToGalaxy}
                 />
               ) : similarPlayersViewEnabled ? (
                 <SimilarPlayersView
@@ -7119,17 +6733,6 @@ export default function App() {
                         <>
                           <span className="cluster-legend-hint">click colored dots to view archetypes</span>
                         </>
-                      )}
-
-                      {galaxyPlotEnabled && galaxyFullscreenEnabled && (
-                        <button
-                          type="button"
-                          className={`player-name-toggle fullscreen-player-comps-btn ${viewTransitionActive ? "transitioning" : ""}`}
-                          onClick={handleOpenPlayerComparison}
-                          title="Open player comparison lab"
-                        >
-                          <span className="player-name-toggle-label">PLAYER COMPS</span>
-                        </button>
                       )}
 
                       {galaxyPlotEnabled && (

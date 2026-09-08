@@ -372,8 +372,8 @@ Every fetch still falls back to the API when a file is missing, so an unexported
 degrades to the old behaviour instead of breaking. Six player-seasons have no comps file
 because the v4 model has no entry for them.
 
-Pairwise `/api/player-comparison` is the one thing left on the backend -- it takes two
-players chosen at request time and cannot be enumerated ahead of it.
+With these in place the site renders entirely from static files. The backend is only a
+fallback, and nothing in the UI waits on it.
 
 ### The two bootstrap files
 

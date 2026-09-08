@@ -144,7 +144,6 @@
   --shadow: 0 0 22px rgba(0, 212, 224, 0.08);
 }
 
-
 * {
   box-sizing: border-box;
 }
@@ -1352,7 +1351,6 @@ input {
   border-color: color-mix(in srgb, var(--cluster-color) 86%, #effcff 14%);
 }
 
-
 .cluster-badge.highlighted {
   background: color-mix(in srgb, var(--cluster-color) 18%, transparent);
   border-color: color-mix(in srgb, var(--cluster-color) 62%, transparent);
@@ -1363,7 +1361,6 @@ input {
 .cluster-badge-index {
   color: var(--gold);
 }
-
 
 .report-scroll {
   flex: 1 1 auto;
@@ -1613,8 +1610,6 @@ input {
   color: var(--pink);
 }
 
-
-
 @media (max-width: 1780px) {
   .main-layout.drawer-open {
     grid-template-columns: var(--left-panel-width, 246px) var(--resize-gutter-width, 12px) minmax(0, 1fr) var(--resize-gutter-width, 12px) var(--right-panel-width, 324px) var(--drawer-panel-width, 300px);
@@ -1667,7 +1662,6 @@ input {
     min-height: 540px;
   }
 
-
   .nav-strip {
     display: none;
   }
@@ -1676,7 +1670,6 @@ input {
     font-size: 15px;
   }
 }
-
 
 .glossary-overlay {
   position: fixed;
@@ -2936,7 +2929,6 @@ input {
   }
 }
 
-
 /* Headshot-enabled player report */
 .player-report-topline {
   display: grid;
@@ -3303,7 +3295,6 @@ input {
 .player-report-header-card .player-report-archetype-full {
   text-align: left;
 }
-
 
 @media (max-width: 1220px) {
   .header-side-strip.with-return-action {
@@ -3774,7 +3765,6 @@ input {
     opacity: 0.9;
   }
 }
-
 
 /* Top-control click safety: keep plot/canvas overlays from intercepting toolbar controls. */
 .center-panel {
@@ -4369,7 +4359,6 @@ input {
     transition: none;
   }
 }
-
 
 .galaxy-auto-spin-toggle {
   min-width: 138px;
@@ -4982,7 +4971,6 @@ input {
   }
 }
 
-
 .galaxy-compact-profile-header {
   position: relative;
   z-index: 1;
@@ -5334,458 +5322,6 @@ input {
 
   .main-layout.galaxy-fullscreen .galaxy-fullscreen-player-search .player-search-results {
     width: 210px;
-  }
-}
-
-/* Player comparison center view */
-.plot-chart-stage.player-comparison-active {
-  gap: 0;
-  overflow: auto;
-}
-
-.player-comparison-view {
-  position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
-  gap: 12px;
-  padding: 16px;
-  overflow: hidden;
-  border: 1px solid rgba(0, 212, 224, 0.13);
-  background:
-    radial-gradient(circle at 18% 18%, rgba(0, 212, 224, 0.10), transparent 30%),
-    radial-gradient(circle at 82% 22%, rgba(183, 122, 254, 0.10), transparent 32%),
-    linear-gradient(180deg, rgba(6, 17, 20, 0.95), rgba(4, 12, 15, 0.98));
-}
-
-.player-comparison-picker-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: stretch;
-  gap: 14px;
-  min-height: 194px;
-}
-
-.player-comparison-card,
-.player-comparison-plus-card {
-  appearance: none;
-  border: 1px solid rgba(0, 212, 224, 0.17);
-  background:
-    radial-gradient(circle at 50% 30%, rgba(0, 212, 224, 0.11), transparent 48%),
-    rgba(3, 14, 17, 0.86);
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
-  letter-spacing: 0.05em;
-  transition:
-    border-color 0.16s ease,
-    box-shadow 0.16s ease,
-    transform 0.16s ease,
-    background 0.16s ease;
-}
-
-.player-comparison-card:hover,
-.player-comparison-card:focus-visible,
-.player-comparison-plus-card:hover,
-.player-comparison-plus-card:focus-visible {
-  border-color: rgba(0, 212, 224, 0.46);
-  box-shadow: 0 0 26px rgba(0, 212, 224, 0.11);
-  transform: translateY(-1px);
-  outline: none;
-}
-
-.player-comparison-card {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 14px;
-  text-align: center;
-}
-
-.player-comparison-card.empty {
-  grid-template-rows: auto auto auto;
-  color: rgba(223, 243, 244, 0.74);
-}
-
-.player-comparison-headshot-wrap {
-  width: 82px;
-  height: 82px;
-  border-radius: 999px;
-  overflow: hidden;
-  border: 1px solid rgba(0, 212, 224, 0.30);
-  background: rgba(0, 0, 0, 0.24);
-  box-shadow: 0 0 22px rgba(0, 212, 224, 0.10);
-}
-
-.player-comparison-headshot {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.player-comparison-card-name {
-  max-width: 100%;
-  color: var(--text);
-  font-size: clamp(18px, 1.45vw, 28px);
-  line-height: 1.05;
-  overflow-wrap: anywhere;
-  text-transform: uppercase;
-}
-
-.player-comparison-card-meta,
-.player-comparison-card-action {
-  color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.player-comparison-card-action {
-  margin-top: 4px;
-  color: rgba(0, 212, 224, 0.82);
-}
-
-.player-comparison-card-archetype {
-  max-width: min(92%, 460px);
-  color: rgba(0, 212, 224, 0.82);
-  font-size: 10px;
-  line-height: 1.25;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.player-comparison-card .player-badges-row--compact {
-  --badge-gap: 4px;
-  --badge-size: 22px;
-  width: auto;
-  max-width: min(100%, 220px);
-  grid-template-columns: repeat(8, var(--badge-size));
-  grid-auto-rows: var(--badge-size);
-  justify-content: center;
-  justify-items: center;
-  align-items: center;
-  margin-top: 1px;
-  margin-bottom: 1px;
-  min-height: var(--badge-size);
-  max-height: calc((2 * var(--badge-size)) + var(--badge-gap));
-  overflow: hidden;
-}
-
-.player-comparison-card .player-badges-row--compact .player-badge {
-  cursor: default;
-  filter: drop-shadow(0 0 5px rgba(0, 212, 224, 0.08));
-}
-
-.player-comparison-empty-plus,
-.player-comparison-plus-card span {
-  width: 42px;
-  height: 42px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(0, 212, 224, 0.32);
-  color: rgba(0, 212, 224, 0.94);
-  font-size: 28px;
-  line-height: 1;
-  background: rgba(0, 212, 224, 0.055);
-  box-shadow: inset 0 0 18px rgba(0, 212, 224, 0.05);
-}
-
-.player-comparison-plus-card {
-  display: grid;
-  place-items: center;
-  min-width: 0;
-  padding: 0;
-}
-
-.player-comparison-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  border: 1px solid rgba(0, 212, 224, 0.12);
-  background: rgba(1, 10, 13, 0.58);
-}
-
-.player-comparison-controls label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 9px;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-}
-
-.player-comparison-controls select {
-  min-height: 32px;
-  min-width: 210px;
-  border: 1px solid rgba(0, 212, 224, 0.24);
-  background: rgba(3, 16, 20, 0.96);
-  color: var(--text);
-  padding: 4px 8px;
-  font: inherit;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.player-comparison-status {
-  min-height: 240px;
-}
-
-.player-comparison-table-shell {
-  min-height: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  overflow: hidden;
-  border: 1px solid rgba(0, 212, 224, 0.15);
-  background: rgba(2, 10, 13, 0.70);
-}
-
-.player-comparison-table-header,
-.player-comparison-row {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(180px, 1.1fr) minmax(120px, 1fr);
-}
-
-.player-comparison-table-header {
-  border-bottom: 1px solid rgba(0, 212, 224, 0.16);
-  background: rgba(0, 212, 224, 0.07);
-}
-
-.player-comparison-table-header div {
-  padding: 10px 12px;
-  color: rgba(223, 243, 244, 0.78);
-  font-size: 10px;
-  letter-spacing: 0.10em;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.player-comparison-table-body {
-  min-height: 0;
-  overflow: auto;
-}
-
-.player-comparison-row {
-  min-height: 40px;
-  border-bottom: 1px solid rgba(223, 243, 244, 0.07);
-}
-
-.player-comparison-value,
-.player-comparison-stat-label {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 10px;
-  text-align: center;
-}
-
-.player-comparison-value {
-  color: rgba(223, 243, 244, 0.84);
-  font-size: 15px;
-  font-weight: 750;
-  letter-spacing: 0.04em;
-}
-
-.player-comparison-value.winner {
-  color: #eaffff;
-  background:
-    radial-gradient(circle at 50% 50%, rgba(0, 212, 224, 0.17), transparent 68%),
-    rgba(0, 212, 224, 0.075);
-  box-shadow: inset 0 0 0 1px rgba(0, 212, 224, 0.13);
-}
-
-.player-comparison-stat-label {
-  flex-direction: column;
-  gap: 2px;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.055em;
-  text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.025);
-}
-
-.player-comparison-stat-label small {
-  color: rgba(255, 139, 209, 0.74);
-  font-size: 7px;
-  letter-spacing: 0.09em;
-}
-
-.player-comparison-empty-table,
-.player-comparison-missing-note,
-.player-comparison-no-results {
-  padding: 12px;
-  color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.player-comparison-missing-note {
-  border-top: 1px solid rgba(0, 212, 224, 0.11);
-  color: rgba(255, 190, 112, 0.74);
-  text-align: left;
-}
-
-.player-comparison-search-panel {
-  position: absolute;
-  z-index: 40;
-  left: 50%;
-  top: 50%;
-  width: min(560px, calc(100% - 36px));
-  max-height: min(620px, calc(100% - 36px));
-  transform: translate(-50%, -50%);
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid rgba(0, 212, 224, 0.34);
-  background: rgba(2, 10, 13, 0.96);
-  box-shadow: 0 0 48px rgba(0, 0, 0, 0.42), 0 0 24px rgba(0, 212, 224, 0.10);
-  backdrop-filter: blur(16px);
-}
-
-.player-comparison-search-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  color: var(--accent);
-  font-size: 11px;
-  letter-spacing: 0.10em;
-}
-
-.player-comparison-search-header button {
-  appearance: none;
-  border: 1px solid rgba(0, 212, 224, 0.22);
-  background: rgba(0, 212, 224, 0.06);
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
-  font-size: 9px;
-  padding: 5px 8px;
-}
-
-.player-comparison-search-panel input {
-  width: 100%;
-  min-height: 36px;
-  border: 1px solid rgba(0, 212, 224, 0.28);
-  background: rgba(0, 0, 0, 0.22);
-  color: var(--text);
-  padding: 8px 10px;
-  font: inherit;
-  font-size: 12px;
-  outline: none;
-}
-
-.player-comparison-search-results {
-  min-height: 0;
-  overflow: auto;
-  display: grid;
-  gap: 6px;
-}
-
-.player-comparison-search-results button {
-  appearance: none;
-  width: 100%;
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  border: 1px solid rgba(0, 212, 224, 0.12);
-  background: rgba(0, 212, 224, 0.035);
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
-  padding: 7px;
-  text-align: left;
-}
-
-.player-comparison-search-results button:hover,
-.player-comparison-search-results button:focus-visible {
-  border-color: rgba(0, 212, 224, 0.38);
-  outline: none;
-}
-
-.player-comparison-search-results img {
-  width: 38px;
-  height: 38px;
-  border-radius: 999px;
-  object-fit: cover;
-  background: rgba(0, 0, 0, 0.24);
-}
-
-.player-comparison-search-results span {
-  min-width: 0;
-  display: grid;
-  gap: 3px;
-}
-
-.player-comparison-search-results strong {
-  overflow: hidden;
-  color: var(--text);
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  text-overflow: ellipsis;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.player-comparison-search-results small {
-  color: var(--muted);
-  font-size: 9px;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.fullscreen-player-comps-btn {
-  min-width: 70px;
-}
-
-.main-layout.galaxy-fullscreen .fullscreen-player-comps-btn {
-  min-width: 70px;
-}
-
-@media (max-width: 900px) {
-  .player-comparison-picker-row {
-    grid-template-columns: 1fr;
-  }
-
-  .player-comparison-plus-card {
-    min-height: 54px;
-  }
-
-  .player-comparison-table-header,
-  .player-comparison-row {
-    grid-template-columns: minmax(84px, 0.85fr) minmax(120px, 1.2fr) minmax(84px, 0.85fr);
-  }
-
-  .player-comparison-controls {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .player-comparison-controls label {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .player-comparison-controls select {
-    min-width: 0;
-    width: 100%;
   }
 }
 
@@ -6730,23 +6266,6 @@ input {
   line-height: 1.15 !important;
 }
 
-.player-comparison-card .player-badges-row,
-.player-comparison-card .player-badges-row--compact {
-  --badge-gap: 9px;
-  --badge-size: 38px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-height: none;
-  min-height: var(--badge-size);
-  width: auto;
-}
-
-.player-comparison-card .player-badge {
-  flex: 0 0 var(--badge-size);
-}
-
-
 /* Final launch polish: exact feature labels use backend mapping; shrink point bubble roughly 40%. */
 .galaxy-player-hover-card {
   max-width: 118px !important;
@@ -6795,7 +6314,6 @@ input {
 .galaxy-player-hover-archetype {
   margin-top: 4px !important;
 }
-
 
 /* Lock the galaxy hover bubble's left-edge midpoint to the cursor/dot. */
 .galaxy-player-hover-card {
@@ -6862,9 +6380,6 @@ input {
   border: 1px solid rgba(223, 243, 244, 0.035);
   pointer-events: none;
 }
-
-
-
 
 .galaxy-player-hover-bubble .galaxy-player-hover-kicker {
   position: relative;

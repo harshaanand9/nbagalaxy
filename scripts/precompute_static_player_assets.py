@@ -11,7 +11,6 @@ This writes what those endpoints return as flat files under
     players/<slug>.json   detail panel + skill breakdown + 3PT breakdown
     comps/<slug>.json     the SIMILAR_PLAYERS view
     cluster_reports/<n>.json
-    comparison_options.json
 
 ``<slug>`` is the player_key with every run of non-alphanumerics collapsed to
 ``_``; the script asserts the mapping is collision-free before writing anything.
@@ -138,11 +137,6 @@ def main() -> None:
 
     for number, report in reports.items():
         write_json(out_dir / "cluster_reports" / f"{number}.json", report)
-
-    try:
-        write_json(out_dir / "comparison_options.json", backend_app.build_player_comparison_options_payload())
-    except Exception as exc:  # non-fatal: the comparison tool keeps its API path
-        print(f"WARNING: comparison options not written ({type(exc).__name__}: {exc})")
 
     print()
     print(f"players/         {counts['players']:>5} files  {bytes_players/1048576:8.1f} MB")
