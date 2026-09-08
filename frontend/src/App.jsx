@@ -412,7 +412,7 @@ const FEATURE_METADATA = {
   "D-LEBRON": {
     "label": "D-LEBRON",
     "description": "Defensive LEBRON impact estimate used as the defensive skill-breakdown source metric.",
-    "formula": "Same-season guard percentile of the D-LEBRON column."
+    "formula": "Same-season league-wide percentile of the D-LEBRON column."
   },
   "crafted_box_creation": {
     "label": "Crafted box creation",
@@ -1535,9 +1535,20 @@ function SimilarPlayersView({
     : sourcePoint
       ? `${sourcePoint.player_name} · ${sourcePoint.season} · ${sourcePoint.teams_played}`
       : "NO_PLAYER_SELECTED";
-  const similarPlayers = data?.similar_players ?? [];
+  const [similarityDomain, setSimilarityDomain] = useState("overall");
+  const [attentionOpen, setAttentionOpen] = useState(false);
   const [similarityMethodologyOpen, setSimilarityMethodologyOpen] = useState(false);
   const [blockedEuclideanOpen, setBlockedEuclideanOpen] = useState(false);
+
+  // v4 responses carry three ranked lists; older ones only carry `similar_players`.
+  const compsByDomain = data?.comps ?? null;
+  const isV4 = Boolean(compsByDomain);
+  const similarPlayers = isV4
+    ? compsByDomain[similarityDomain] ?? []
+    : data?.similar_players ?? [];
+  const attention = data?.attention ?? null;
+  const offWeightPct = attention ? Math.round(attention.off_weight * 100) : null;
+  const defWeightPct = attention ? 100 - offWeightPct : null;
 
   return (
     <div className="similar-players-view">
@@ -1601,18 +1612,27 @@ function SimilarPlayersView({
             </header>
             <div className="similarity-methodology-page-body">
               <p className="similarity-page-copy">
-                The similarity calculations are performed on the <span className="universe-cyan-text">raw equal-block weighted feature space</span>: per-game volume features where applicable, season-median imputation, same-season guard standardization, ±3.50 z-score clipping, and no PCA.
+                Player comparisons come from a <span className="universe-cyan-text">supervised, per-player similarity model</span>. Unlike a fixed-weight tool, it learns which parts of the game re-identify a player across seasons, then re-weights that profile toward what makes <em>this</em> player-season distinctive. Every feature is standardized within its own season first, so era and pace never drive a match.
               </p>
               <UniverseAccordion
-                title="Why Equal Blocks?"
+                title="How The Weights Are Chosen"
                 open={blockedEuclideanOpen}
                 onToggle={() => setBlockedEuclideanOpen((previousValue) => !previousValue)}
               >
                 <p>
-                  The model compares guards across six basketball blocks: Three-Point Shooting, Midrange Scoring, Rim Pressure, Playmaking, Defense, and Playtypes. Each block receives equal weight (~16.7% of the final vector), so no single area of the game can dominate the similarity calculation.
+                  Features sit in a hierarchy of skill areas and subgroups. Each subgroup is rotated by PCA and whitened, so overlapping stats inside it cannot double-count and every subgroup starts with equal influence.
+                </p>
+                <p>
+                  Weights are then <strong>learned</strong> by training on pairs of consecutive same-player seasons: the areas that best predict "this is the same player" earn more weight. Separate models are fit for guards, wings and bigs, and separately for offense and defense — six models in all.
+                </p>
+                <p>
+                  Those league-wide weights are then <strong>personalized</strong>. Each player-season is scored against same-season, same-position peers to find what it is genuinely unusual at, and attention shifts toward those areas. Sharpening is adaptive: when a player's evidence is spread across many areas the profile deliberately stays broad, so versatile players are not collapsed into one trait.
+                </p>
+                <p>
+                  Role gates keep low-opportunity defensive areas from inflating a match, and each player's offense/defense balance is set from impact metrics — which is why a defensive anchor is matched mostly on defense and a lead guard mostly on offense.
                 </p>
                 <p className="similarity-blocked-part-copy">
-                  Similarity uses cosine distance throughout this transformed feature space.
+                  Distances are pair-averaged so the comparison reads the same in both directions, a soft penalty discourages guard-to-big matches without banning them, and scores are a monotone transform of distance: 100 / (1 + (d / median d)²).
                 </p>
               </UniverseAccordion>
             </div>
@@ -1620,11 +1640,98 @@ function SimilarPlayersView({
         </div>
       )}
 
+      {isV4 && (
+        <div className="similarity-v4-controls">
+          <div className="similarity-domain-tabs" role="tablist" aria-label="Comparison domain">
+            {[
+              ["overall", "OVERALL"],
+              ["offense", "OFFENSE"],
+              ["defense", "DEFENSE"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={similarityDomain === value}
+                className={`similarity-domain-tab${similarityDomain === value ? " is-active" : ""}`}
+                onClick={() => setSimilarityDomain(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {attention && (
+            <div className="similarity-identity-bar" title="How much of the overall comparison comes from each side of the ball">
+              <span className="similarity-identity-label">IDENTITY</span>
+              <div className="similarity-identity-track">
+                <div className="similarity-identity-off" style={{ width: `${offWeightPct}%` }}>
+                  OFF {offWeightPct}%
+                </div>
+                <div className="similarity-identity-def" style={{ width: `${defWeightPct}%` }}>
+                  DEF {defWeightPct}%
+                </div>
+              </div>
+              <button
+                type="button"
+                className="similarity-attention-btn"
+                onClick={() => setAttentionOpen((previousValue) => !previousValue)}
+                aria-expanded={attentionOpen}
+              >
+                {attentionOpen ? "HIDE_ATTENTION" : "SHOW_ATTENTION"}
+              </button>
+            </div>
+          )}
+
+          {attentionOpen && attention && (
+            <div className="similarity-attention-panel">
+              <p className="similarity-attention-copy">
+                What the model weighted for this player-season, after learned continuity
+                weights, their own distinctiveness, sharpening, role gates and the
+                offense/defense balance. Shares sum to 100%.
+              </p>
+              <div className="similarity-attention-columns">
+                <div className="similarity-attention-column">
+                  <div className="similarity-attention-heading">SKILL_AREAS</div>
+                  {attention.families.slice(0, 12).map((row) => (
+                    <div key={`${row.family}-${row.domain}`} className="similarity-attention-row">
+                      <span className={`similarity-attention-dot is-${String(row.domain).toLowerCase()}`} />
+                      <span className="similarity-attention-name">{row.family}</span>
+                      <span className="similarity-attention-bar">
+                        <span style={{ width: `${Math.min(100, row.attention_pct * 8)}%` }} />
+                      </span>
+                      <strong>{row.attention_pct.toFixed(1)}%</strong>
+                    </div>
+                  ))}
+                </div>
+                <div className="similarity-attention-column">
+                  <div className="similarity-attention-heading">INDIVIDUAL_SKILLSETS</div>
+                  {attention.skillsets.slice(0, 12).map((row) => (
+                    <div key={`${row.skillset}-${row.parent_block}-${row.domain}`} className="similarity-attention-row">
+                      <span className={`similarity-attention-dot is-${String(row.domain).toLowerCase()}`} />
+                      <span className="similarity-attention-name">{row.skillset}</span>
+                      <span className="similarity-attention-bar">
+                        <span style={{ width: `${Math.min(100, row.attention_pct * 8)}%` }} />
+                      </span>
+                      <strong>{row.attention_pct.toFixed(1)}%</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="similar-players-body">
         {loading && <div className="similar-players-empty">LOADING_SIMILAR_PLAYERS...</div>}
         {!loading && error && <div className="similar-players-empty similar-players-error">{error}</div>}
         {!loading && !error && !similarPlayers.length && (
-          <div className="similar-players-empty">NO_SIMILAR_PLAYERS_FOUND</div>
+          <div className="similar-players-empty">
+            {data?.unavailable_reason
+              ? `NO_COMPARISONS_AVAILABLE — ${data.unavailable_reason}`
+              : "NO_SIMILAR_PLAYERS_FOUND"}
+          </div>
         )}
 
         {!loading && !error && similarPlayers.length > 0 && (
@@ -1638,7 +1745,15 @@ function SimilarPlayersView({
               >
                 <div className="similar-player-topline">
                   <span className="similar-rank">#{player.rank}</span>
-                  <span className="similar-score">SIM {formatSimilarityScore(player.similarity_score)}</span>
+                  <span className="similar-score">
+                    SIM {formatSimilarityScore(
+                      similarityDomain === "offense"
+                        ? player.off_similarity
+                        : similarityDomain === "defense"
+                          ? player.def_similarity
+                          : player.similarity_score,
+                    )}
+                  </span>
                 </div>
 
                 <div className="similar-player-identity-row">
@@ -1665,16 +1780,37 @@ function SimilarPlayersView({
                   <p>{player.biggest_difference_blocks || "—"}</p>
                 </div>
 
-                <div className="similar-player-section-label">COMPONENT_LEVEL_SIMILARITIES</div>
-
-                <div className="similar-block-score-grid">
-                  {Object.entries(player.block_scores ?? {}).map(([blockName, score]) => (
-                    <div key={`${player.rank}-${blockName}`} className="similar-block-score">
-                      <span>{blockName}</span>
-                      <strong>{formatSimilarityScore(score?.similarity_score)}</strong>
+                {isV4 ? (
+                  <>
+                    <div className="similar-player-section-label">DOMAIN_SIMILARITY</div>
+                    <div className="similar-block-score-grid">
+                      <div className={`similar-block-score${similarityDomain === "offense" ? " is-active" : ""}`}>
+                        <span>OFFENSE</span>
+                        <strong>{formatSimilarityScore(player.off_similarity)}</strong>
+                      </div>
+                      <div className={`similar-block-score${similarityDomain === "defense" ? " is-active" : ""}`}>
+                        <span>DEFENSE</span>
+                        <strong>{formatSimilarityScore(player.def_similarity)}</strong>
+                      </div>
+                      <div className={`similar-block-score${similarityDomain === "overall" ? " is-active" : ""}`}>
+                        <span>OVERALL</span>
+                        <strong>{formatSimilarityScore(player.overall_similarity)}</strong>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="similar-player-section-label">COMPONENT_LEVEL_SIMILARITIES</div>
+                    <div className="similar-block-score-grid">
+                      {Object.entries(player.block_scores ?? {}).map(([blockName, score]) => (
+                        <div key={`${player.rank}-${blockName}`} className="similar-block-score">
+                          <span>{blockName}</span>
+                          <strong>{formatSimilarityScore(score?.similarity_score)}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </button>
             ))}
           </div>
@@ -1840,7 +1976,7 @@ function buildBreakdownCards(data, sourcePoint, axes, baseColor = CLUSTER_COLORS
     {
       key: "guard",
       eyebrow: "SEASON_MEDIAN",
-      title: data?.guard_median?.label ?? (playerSeason ? `Median Guard ${playerSeason}` : "Median Guard"),
+      title: data?.guard_median?.label ?? (playerSeason ? `Median Player ${playerSeason}` : "Median Player"),
       scores: data?.guard_median?.scores,
       color: "#DFF3F4",
     },
@@ -1920,7 +2056,7 @@ function SkillBreakdownMethodologyPage({ open, onClose }) {
             onToggle={() => setGeneralOpen((previousValue) => !previousValue)}
           >
             <p>
-              When calculating the percentiles for both the overall block and the individual subsections, every percentile is calculated with respect to guards from the same season only.
+              When calculating the percentiles for both the overall block and the individual subsections, every percentile is calculated with respect to every NBA player from the same season, at every position.
             </p>
           </UniverseAccordion>
 
@@ -2041,7 +2177,7 @@ function SkillBreakdownMethodologyPage({ open, onClose }) {
 
           <UniverseAccordion title="D-LEBRON Skill Breakdown" open={defenseOpen} onToggle={() => setDefenseOpen((previousValue) => !previousValue)}>
             <p>
-              The D-LEBRON Skill Breakdown percentile is the within-season guard percentile of the player's D-LEBRON rating.
+              The D-LEBRON Skill Breakdown percentile is the within-season league-wide percentile of the player's D-LEBRON rating.
             </p>
           </UniverseAccordion>
 
@@ -2748,6 +2884,7 @@ function MethodologyModal({ open, onClose }) {
   const [playersRemovedOpen, setPlayersRemovedOpen] = useState(false);
   const [kMeansOpen, setKMeansOpen] = useState(false);
   const [euclideanOpen, setEuclideanOpen] = useState(false);
+  const [clusterCountOpen, setClusterCountOpen] = useState(false);
   const [inspirationsOpen, setInspirationsOpen] = useState(false);
 
   if (!open) return null;
@@ -2786,13 +2923,13 @@ function MethodologyModal({ open, onClose }) {
           <div className="universe-page-shell">
             <section className="universe-hero-card">
               <p>
-                My NBA Galaxy is a <span className="universe-cyan-text">3-D UMAP Embedding</span> of NBA guard player-seasons since 2016-17, built to visualize the statistical play-style similarity between players rather than player production alone. Each point represents one guard season, and distance between points is meant to reflect similarity across 58 different shooting, rim pressure, playmaking, and defensive metrics.
+                My NBA Galaxy is a <span className="universe-cyan-text">3-D UMAP Embedding</span> of <span className="universe-cyan-text">every NBA player-season since 2016-17</span>, built to visualize statistical play-style similarity between players rather than player production alone. Point guards through centers are all in the same model. Each point represents one player-season, and distance between points is meant to reflect similarity across 77 different shooting, mid-range, rim pressure, playmaking, defensive, and playtype metrics.
               </p>
               <p>
                 Nearby points are statistically similar player-seasons, cluster colors represent different <span className="universe-cyan-text">archetypes</span>, and <span className="universe-cyan-text">constellation lines</span> show nearest-player relationships in my full blocked-feature space.
               </p>
               <p>
-                The Galaxy does the best job it can in preserving my <span className="universe-cyan-text">58-D feature space</span> in just <span className="universe-cyan-text">three dimensions</span>. This UMAP 3D Embedding is just for visual interpretation, while the actual similarity rankings are performed on the updated raw equal-block weighted feature space.
+                The Galaxy does the best job it can in preserving my <span className="universe-cyan-text">77-D feature space</span> in just <span className="universe-cyan-text">three dimensions</span>. This UMAP 3D Embedding is just for visual interpretation, while the actual similarity rankings are performed on the updated raw equal-block weighted feature space.
               </p>
             </section>
 
@@ -2802,7 +2939,7 @@ function MethodologyModal({ open, onClose }) {
               onToggle={() => setClusteringOpen((previousValue) => !previousValue)}
             >
               <p className="universe-methodology-lede">
-                I separated all these guards into 12 stable and interpretable archetypes using a <span className="universe-cyan-text">blocked-PCA</span>, <span className="universe-cyan-text">K-Means++ algorithm</span>.
+                I separated every player-season into 16 stable and interpretable archetypes using a <span className="universe-cyan-text">blocked-PCA</span>, <span className="universe-cyan-text">K-Means++ algorithm</span>. The archetypes are built from how a player actually plays, not from his listed position, which is why a stretch four and a stretch five can share one archetype while two players both listed at centre can land in completely different ones.
               </p>
 
               <UniverseAccordion
@@ -2812,7 +2949,10 @@ function MethodologyModal({ open, onClose }) {
                 nested
               >
                 <p>
-                  To ensure the highest quality archetype creation, LeBron James, Ben Simmons, and Scottie Barnes were all removed.
+                  <span className="universe-cyan-text">Nobody.</span> Every player-season that clears the minutes and games-played cut is in the model.
+                </p>
+                <p>
+                  Earlier versions of the Galaxy held out LeBron James, Ben Simmons, and Scottie Barnes. That was never really about those three players; it was about the model being guards-only, which left three forwards being measured against a peer group they did not belong to. Now that every position is in the same model, the reason is gone and so is the exclusion.
                 </p>
               </UniverseAccordion>
 
@@ -2821,7 +2961,7 @@ function MethodologyModal({ open, onClose }) {
                   <div className="universe-step-number">01</div>
                   <div className="universe-step-content">
                     <p>
-                      I first standardized each player season with respect to the guards of that season. Then I clipped each standardized feature at ±3.25 z-scores.
+                      I first standardized each player-season with respect to <span className="universe-cyan-text">every player in that same season</span>, not against players who share his listed position. Then I clipped each standardized feature at ±3.50 z-scores.
                     </p>
                     <UniverseAccordion
                       title="Why standardized W.R.T. each season?"
@@ -2830,7 +2970,10 @@ function MethodologyModal({ open, onClose }) {
                       nested
                     >
                       <p>
-                        Because NBA environments change over time, every feature is evaluated relative to guards from the same season. This prevents older seasons from being unfairly compared to modern seasons with different spacing, pace, 3-point volume, and offensive style.
+                        Because NBA environments change over time, every feature is evaluated relative to the players of that same season. This prevents older seasons from being unfairly compared to modern seasons with different spacing, pace, 3-point volume, and offensive style.
+                      </p>
+                      <p>
+                        Standardizing against the whole league rather than against a position group is deliberate. A centre who takes six threes a game is genuinely unusual, and the model should see that as unusual. Comparing him only to other centres would hide exactly the thing that makes his play style distinctive.
                       </p>
                     </UniverseAccordion>
                   </div>
@@ -2840,7 +2983,7 @@ function MethodologyModal({ open, onClose }) {
                   <div className="universe-step-number">02</div>
                   <div className="universe-step-content">
                     <p>
-                      Instead of applying PCA to all 58 features at once, I apply PCA inside each block separately. After PCA, each block is weighted equally before clustering, so no single area of the game can dominate the entire archetype structure.
+                      Instead of applying PCA to all 77 features at once, I apply PCA inside each block separately. Each block is then weighted before clustering, so no single area of the game can dominate the entire archetype structure regardless of how many columns it happens to contain.
                     </p>
                     <UniverseAccordion
                       title="Why blocked-PCA over vanilla PCA?"
@@ -2852,7 +2995,7 @@ function MethodologyModal({ open, onClose }) {
                         Vanilla PCA would be horrible for this clustering scenario as it enables the linear interactions between completely unrelated features, preserving <span className="universe-red-text">artificial variance</span>.
                       </p>
                       <p>
-                        My Blocked-PCA on the other hand enables only the features within each block to linearly interact with each other. Theoretically and experimentally, this forms substantially more meaningful principal components. The five blocks used are <span className="universe-cyan-text">Three-Point Shooting</span>, <span className="universe-cyan-text">Midrange Scoring</span>, <span className="universe-cyan-text">Rim Pressure</span>, <span className="universe-cyan-text">Playmaking</span>, and <span className="universe-cyan-text">Defense</span>.
+                        My Blocked-PCA on the other hand enables only the features within each block to linearly interact with each other. Theoretically and experimentally, this forms substantially more meaningful principal components. The six blocks used are <span className="universe-cyan-text">Three-Point Shooting</span> (18 features), <span className="universe-cyan-text">Midrange Scoring</span> (10), <span className="universe-cyan-text">Rim Pressure</span> (10), <span className="universe-cyan-text">Playmaking</span> (10), <span className="universe-cyan-text">Defense</span> (7), and <span className="universe-cyan-text">Playtypes</span> (22). The first five each carry 15% of the final vector and Playtypes carries 25%.
                       </p>
 
                       <UniverseAccordion
@@ -2873,7 +3016,7 @@ function MethodologyModal({ open, onClose }) {
                   <div className="universe-step-number">03</div>
                   <div className="universe-step-content">
                     <p>
-                      Finally, I run Euclidean-Based K-Means++ on the transformed blocked-feature space to separate the guard seasons into 12 archetypes.
+                      Finally, I run Euclidean-Based K-Means++ on the transformed blocked-feature space to separate the player-seasons into 16 archetypes.
                     </p>
                     <UniverseAccordion
                       title="Why K-Means++?"
@@ -2893,6 +3036,22 @@ function MethodologyModal({ open, onClose }) {
                     >
                       <p>
                         Due to the heavy usage of possession-level frequency features and PCA-Blocking, I found Euclidean distance to work best only after the pipeline standardizes each season, clips extreme values, compresses each block with PCA, and applies equal block weighting. That prevents Euclidean distance from comparing raw statistics without context.
+                      </p>
+                    </UniverseAccordion>
+                    <UniverseAccordion
+                      title="Why 16 archetypes?"
+                      open={clusterCountOpen}
+                      onToggle={() => setClusterCountOpen((previousValue) => !previousValue)}
+                      nested
+                    >
+                      <p>
+                        I swept k from 10 to 28 and scored each one on cluster stability, measured by re-running the clustering on 80% subsamples and checking how often players landed together again.
+                      </p>
+                      <p>
+                        Stability falls as k rises, so the raw numbers always favour small k. Below 16 though, the model stops telling the truth about big men: every non-shooting centre collapses into a single group, and the difference between a rim-running lob threat, a physical paint scorer, and a floor-spacing five disappears. Above 16, the extra clusters stop describing anything new and simply cut the wing population into near-identical slices.
+                      </p>
+                      <p>
+                        16 is where the model still separates four genuinely different kinds of big and an interior playmaking hub while keeping the guard structure intact.
                       </p>
                     </UniverseAccordion>
                   </div>
@@ -2971,9 +3130,9 @@ function WelcomeModal() {
         </div>
 
         <div className="welcome-updates">
-          <p className="welcome-subline">Wings + Bigs will be added soon!</p>
+          <p className="welcome-subline">Wings + Bigs are here!</p>
           <p className="welcome-status">
-            We are in the process of implementing a new player comparison algorithm that outperforms all other publicly available tools. Algorithm has been completed but not implemented yet due to badge logic needing to be done for newly added players.
+            The Galaxy now covers every NBA player-season since 2016-17 at every position, sorted into 16 new archetypes. Badges were rebuilt from scratch for the full league: every percentile is now taken against all players rather than guards only, and there are seven new badges covering rim protection, interior scoring, screening, and perimeter defense.
           </p>
         </div>
       </div>
@@ -3053,6 +3212,38 @@ function ReadMeModal({ open, onClose }) {
               <p>
                 Every player is also assigned an accurate <span className="universe-cyan-text">3-PT, Mid-Range, Rim Pressure, Playmaking</span> and <span className="universe-cyan-text">Defensive</span> skill percentile obtained through percentile calculations explained in the site. Players are also assigned <span className="universe-cyan-text">badges</span> based on their within-season percentiles of the medians of different groups of features.
               </p>
+            </UniverseAccordion>
+
+            <UniverseAccordion
+              title="How badges work"
+              open={Boolean(openSections.badges)}
+              onToggle={() => toggleSection("badges")}
+            >
+              <p>
+                There are <span className="universe-cyan-text">26 badges</span> across seven skill families: Three-Point Shooting, Mid-Range, Interior Scoring, Rim Pressure, Scoring, Playmaking, and Defense. Every badge score is a percentile taken against <span className="universe-cyan-text">every NBA player in that same season</span>, at every position.
+              </p>
+              <p>
+                Ranking a centre against guards would normally be unfair in both directions, so each badge has an <span className="universe-cyan-text">opportunity gate</span>: you can only earn a badge in something you actually do at volume. A centre is never measured on pull-up three-point shooting because he never clears that gate, and a point guard is never measured on rim protection. The gates are always behavioural, based on what a player does on the floor, never on his listed position.
+              </p>
+              <p>
+                Where volume and efficiency both matter, accuracy is compared <span className="universe-cyan-text">locally</span> rather than globally: a player's finishing is ranked against other players who shoot from that spot at a similar rate. The clearest case is Rim Protector, where opponent FG% difference is compared only against players who contest a similar share of shots. Rim contests are converted at a much higher rate than perimeter contests, so an unadjusted number would punish exactly the players doing the most defensive work.
+              </p>
+              <UniverseAccordion
+                title="What the tiers mean"
+                open={Boolean(openSections.badgeTiers)}
+                onToggle={() => toggleSection("badgeTiers")}
+                nested
+              >
+                <p>
+                  Thresholds are not hand-picked. They are solved so that every badge lands on roughly the same share of the league, which stops a badge from becoming ordinary just because the skill underneath it is common.
+                </p>
+                <p>
+                  <span className="universe-cyan-text">Bronze</span> is about the top 12% of the league at that skill, <span className="universe-cyan-text">Silver</span> the top 6%, <span className="universe-cyan-text">Gold</span> the top 2.4%, and <span className="universe-cyan-text">Diamond</span> roughly the top 0.6%.
+                </p>
+                <p>
+                  Badges are meant to mark players who are genuinely great to elite at something. Plenty of real rotation players have <span className="universe-cyan-text">no badges at all</span>, and that is the intended result rather than a gap.
+                </p>
+              </UniverseAccordion>
             </UniverseAccordion>
 
             <UniverseAccordion
@@ -6866,7 +7057,7 @@ export default function App() {
                           >
                             <span className="player-name-toggle-label">{browserFullscreenActive ? "EXIT FULL SCREEN" : "ENTER FULL SCREEN"}</span>
                           </button>
-                          <span className="cluster-legend-future-note cluster-legend-future-note-after-fullscreen">wings + bigs will be added soon</span>
+                          <span className="cluster-legend-future-note cluster-legend-future-note-after-fullscreen">all positions · 16 archetypes</span>
                         </>
                       )}
 

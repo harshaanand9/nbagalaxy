@@ -1,98 +1,130 @@
 [
   {
     "cluster": 1,
-    "cluster_name": "3PT-Reliant Sharpshooter",
-    "x": -0.631425,
-    "y": -0.289076,
-    "z": -0.080698,
-    "player_count": 137
+    "cluster_name": "Primary Offensive Engine",
+    "x": -0.820411,
+    "y": -0.28799,
+    "z": -0.057112,
+    "player_count": 140
   },
   {
     "cluster": 2,
-    "cluster_name": "Slashing Oriented, Scoring + Playmaking Threat",
-    "x": 0.380085,
-    "y": 0.187333,
-    "z": -0.011939,
-    "player_count": 141
+    "cluster_name": "Downhill Table-Setting Point",
+    "x": -0.504449,
+    "y": -0.250527,
+    "z": -0.226556,
+    "player_count": 218
   },
   {
     "cluster": 3,
-    "cluster_name": "3PT Oriented Lock-Down Secondary Handler",
-    "x": -0.333049,
-    "y": 0.174845,
-    "z": -0.235961,
-    "player_count": 97
+    "cluster_name": "Pull-Up Shooting Combo Guard",
+    "x": -0.462456,
+    "y": -0.032029,
+    "z": -0.010002,
+    "player_count": 235
   },
   {
     "cluster": 4,
-    "cluster_name": "Expanded Role Sharpshooter",
-    "x": -0.246313,
-    "y": -0.48174,
-    "z": 0.153992,
-    "player_count": 111
+    "cluster_name": "Point-of-Attack Connector Guard",
+    "x": -0.188582,
+    "y": 0.039048,
+    "z": -0.302024,
+    "player_count": 247
   },
   {
     "cluster": 5,
-    "cluster_name": "Playmaking and 3PT Spark Plug",
-    "x": 0.082602,
-    "y": -0.096769,
-    "z": -0.131625,
-    "player_count": 145
+    "cluster_name": "Isolation-Heavy Mid-Range Maestro",
+    "x": -0.69879,
+    "y": -0.27512,
+    "z": 0.299939,
+    "player_count": 144
   },
   {
     "cluster": 6,
-    "cluster_name": "3-Level Scoring and Playmaking Machine",
-    "x": 0.731695,
-    "y": -0.20372,
-    "z": -0.33409,
-    "player_count": 86
+    "cluster_name": "Two-Level Movement Shooter",
+    "x": -0.265789,
+    "y": 0.258784,
+    "z": 0.235956,
+    "player_count": 219
   },
   {
     "cluster": 7,
-    "cluster_name": "Talented Pass-First Point",
-    "x": 0.182941,
-    "y": 0.268177,
-    "z": -0.080515,
-    "player_count": 104
+    "cluster_name": "3PT-Reliant Sharpshooter",
+    "x": 0.05355,
+    "y": 0.473535,
+    "z": 0.04681,
+    "player_count": 280
   },
   {
     "cluster": 8,
-    "cluster_name": "Limited Playmaking Spark Plug",
-    "x": -0.224362,
-    "y": -0.037552,
-    "z": 0.095004,
-    "player_count": 182
+    "cluster_name": "Limited-Playmaking Scoring Wing",
+    "x": -0.050923,
+    "y": 0.111404,
+    "z": 0.002366,
+    "player_count": 302
   },
   {
     "cluster": 9,
-    "cluster_name": "Inside-the-Arc Scoring and Playmaking Machine",
-    "x": 0.777471,
-    "y": 0.080587,
-    "z": 0.279614,
-    "player_count": 79
+    "cluster_name": "Corner-Spacing 3-and-D Wing",
+    "x": 0.347576,
+    "y": 0.205415,
+    "z": -0.186179,
+    "player_count": 295
   },
   {
     "cluster": 10,
-    "cluster_name": "Streaky Shooting Defensive Savant",
-    "x": -0.678012,
-    "y": 0.384875,
-    "z": 0.049557,
-    "player_count": 91
+    "cluster_name": "High-Efficiency Off-Ball Forward",
+    "x": 0.075656,
+    "y": 0.161664,
+    "z": 0.048767,
+    "player_count": 258
   },
   {
     "cluster": 11,
-    "cluster_name": "Slashing Oriented Lock-Down Point",
-    "x": -0.05674,
-    "y": 0.532215,
-    "z": 0.06666,
-    "player_count": 99
+    "cluster_name": "Interior Playmaking Hub",
+    "x": 0.008023,
+    "y": -0.413895,
+    "z": -0.043562,
+    "player_count": 98
   },
   {
     "cluster": 12,
-    "cluster_name": "3-Level Scoring Machine",
-    "x": 0.34106,
-    "y": -0.254746,
-    "z": 0.182223,
-    "player_count": 133
+    "cluster_name": "Skilled Two-Way Scoring Big",
+    "x": 0.146123,
+    "y": -0.210165,
+    "z": 0.412708,
+    "player_count": 109
+  },
+  {
+    "cluster": 13,
+    "cluster_name": "Floor-Spacing Stretch Big",
+    "x": 0.409252,
+    "y": 0.160886,
+    "z": 0.051266,
+    "player_count": 219
+  },
+  {
+    "cluster": 14,
+    "cluster_name": "Conventional Two-Way Big",
+    "x": 0.583744,
+    "y": -0.241932,
+    "z": 0.083902,
+    "player_count": 216
+  },
+  {
+    "cluster": 15,
+    "cluster_name": "Physical Paint Finisher",
+    "x": 0.65569,
+    "y": -0.498909,
+    "z": 0.035296,
+    "player_count": 111
+  },
+  {
+    "cluster": 16,
+    "cluster_name": "Vertical Spacing Rim Protector",
+    "x": 0.925937,
+    "y": -0.470329,
+    "z": -0.049544,
+    "player_count": 121
   }
 ]

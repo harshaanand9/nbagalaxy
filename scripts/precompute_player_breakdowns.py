@@ -152,7 +152,7 @@ def build_precomputed_breakdowns_for_kind(runtime: Dict[str, Any], dataset_path:
     def guard_median_payload_for_season(season: str) -> Dict[str, Any]:
         season_guard_mask = guards["Season"].astype(str).eq(str(season)).to_numpy()
         return {
-            "label": f"Median Guard {season}",
+            "label": f"Median Player {season}",
             "season": str(season),
             "scores": component_median_scores(season_guard_mask),
             "subsections": subsection_median_scores(season_guard_mask),

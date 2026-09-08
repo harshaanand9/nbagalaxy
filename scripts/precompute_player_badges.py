@@ -108,9 +108,9 @@ def main() -> None:
     )
     dataframe = dataframe[dataframe["_remove_flag"] != 1].drop(columns=["_remove_flag"]).copy()
 
-    guards = dataframe[dataframe["position"].isin(["PG", "SG"])].copy()
+    guards = dataframe.copy()
     if guards.empty:
-        raise ValueError("No guards found with position equal to PG or SG.")
+        raise ValueError("No player-seasons found in the dataset.")
     guards["player_key"] = guards.apply(stable_player_key, axis=1)
 
     badges_by_player_key = compute_badges_for_guards(guards)

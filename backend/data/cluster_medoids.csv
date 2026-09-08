@@ -1,13 +1,17 @@
 cluster,cluster_name,player_key,player_name,season,teams_played,position,mean_truth_distance
-1,3PT-Reliant Sharpshooter,Furkan Korkmaz||2019-20||PHI||SG,Furkan Korkmaz,2019-20,PHI,SG,0.399123
-2,"Slashing Oriented, Scoring + Playmaking Threat",De'Aaron Fox||2019-20||SAC||PG,De'Aaron Fox,2019-20,SAC,PG,0.52788
-3,3PT Oriented Lock-Down Secondary Handler,Marcus Smart||2018-19||BOS||SG,Marcus Smart,2018-19,BOS,SG,0.55662
-4,Expanded Role Sharpshooter,Bryn Forbes||2020-21||MIL||SG,Bryn Forbes,2020-21,MIL,SG,0.401322
-5,Playmaking and 3PT Spark Plug,Fred VanVleet||2024-25||HOU||PG,Fred VanVleet,2024-25,HOU,PG,0.729102
-6,3-Level Scoring and Playmaking Machine,Damian Lillard||2019-20||POR||PG,Damian Lillard,2019-20,POR,PG,0.277896
-7,Talented Pass-First Point,Tyus Jones||2018-19||MIN||PG,Tyus Jones,2018-19,MIN,PG,0.51883
-8,Limited Playmaking Spark Plug,Lonnie Walker IV||2022-23||LAL||SG,Lonnie Walker IV,2022-23,LAL,SG,0.64612
-9,Inside-the-Arc Scoring and Playmaking Machine,Dejounte Murray||2021-22||SAS||PG,Dejounte Murray,2021-22,SAS,PG,0.324715
-10,Streaky Shooting Defensive Savant,"Javonte Green||2024-25||CLE,NOP||SG",Javonte Green,2024-25,"CLE,NOP",SG,0.408121
-11,Slashing Oriented Lock-Down Point,Dennis Smith Jr.||2022-23||CHA||PG,Dennis Smith Jr.,2022-23,CHA,PG,0.521663
-12,3-Level Scoring Machine,Tyler Herro||2021-22||MIA||SG,Tyler Herro,2021-22,MIA,SG,0.467946
+1,Primary Offensive Engine,Trae Young||2021-22||ATL||PG,Trae Young,2021-22,ATL,PG,0.170699
+2,Downhill Table-Setting Point,Jeff Teague||2018-19||MIN||PG,Jeff Teague,2018-19,MIN,PG,0.313492
+3,Pull-Up Shooting Combo Guard,Anfernee Simons||2024-25||POR||SG,Anfernee Simons,2024-25,POR,SG,0.369603
+4,Point-of-Attack Connector Guard,Jose Alvarado||2024-25||NOP||PG,Jose Alvarado,2024-25,NOP,PG,0.532993
+5,Isolation-Heavy Mid-Range Maestro,Devin Booker||2023-24||PHX||PG,Devin Booker,2023-24,PHX,PG,0.183058
+6,Two-Level Movement Shooter,JJ Redick||2019-20||NOP||SG,JJ Redick,2019-20,NOP,SG,0.415521
+7,3PT-Reliant Sharpshooter,Jamison Battle||2024-25||TOR||SF,Jamison Battle,2024-25,TOR,SF,0.403164
+8,Limited-Playmaking Scoring Wing,Frank Jackson||2018-19||NOP||PG,Frank Jackson,2018-19,NOP,PG,0.657669
+9,Corner-Spacing 3-and-D Wing,"Javonte Green||2024-25||CLE,NOP||SG",Javonte Green,2024-25,"CLE,NOP",SG,0.457621
+10,High-Efficiency Off-Ball Forward,Dorian Finney-Smith||2021-22||DAL||PF,Dorian Finney-Smith,2021-22,DAL,PF,0.634267
+11,Interior Playmaking Hub,Domantas Sabonis||2023-24||SAC||C,Domantas Sabonis,2023-24,SAC,C,0.503768
+12,Skilled Two-Way Scoring Big,Serge Ibaka||2018-19||TOR||C,Serge Ibaka,2018-19,TOR,C,0.418693
+13,Floor-Spacing Stretch Big,Maxi Kleber||2019-20||DAL||PF,Maxi Kleber,2019-20,DAL,PF,0.42246
+14,Conventional Two-Way Big,John Collins||2017-18||ATL||PF,John Collins,2017-18,ATL,PF,0.321696
+15,Physical Paint Finisher,Jarrett Allen||2023-24||CLE||C,Jarrett Allen,2023-24,CLE,C,0.232295
+16,Vertical Spacing Rim Protector,Rudy Gobert||2025-26||MIN||C,Rudy Gobert,2025-26,MIN,C,0.168392

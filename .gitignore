@@ -16,3 +16,15 @@ backend/cache/
 .cache/
 .vite/
 frontend/node_modules/.vite/
+
+# Standalone experiment artifacts
+outputs/
+
+# Inspection-only export from the v4 similarity precompute. Regenerate with
+# scripts/precompute_similarity_v4.py; the backend reads similarity_v4.json.
+backend/data/similarity_v4_comps.csv
+
+# First-load payload for the frontend. Regenerate with
+# scripts/precompute_default_bootstrap.py (or precompute_all_site_assets.py);
+# it is a derived artifact and exceeds GitHub's 100 MB file limit.
+frontend/public/precomputed/default_bootstrap.json

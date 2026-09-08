@@ -29,7 +29,7 @@ except ImportError:
     )
 
 
-APP_VERSION = "0.25.0"
+APP_VERSION = "0.26.0"
 BACKEND_DIR = Path(__file__).resolve().parent
 BACKEND_DATA_DIR = BACKEND_DIR / "data"
 DEFAULT_DATASET_PATH = os.environ.get(
@@ -304,9 +304,9 @@ def build_locked_euclidean_feature_signature() -> str:
     }
     raw_signature = json.dumps(signature_payload, sort_keys=True).encode("utf-8")
     return hashlib.sha256(raw_signature).hexdigest()
-EUCLIDEAN_KMEANS_LOCKED_K = 12
+EUCLIDEAN_KMEANS_LOCKED_K = 16
 EUCLIDEAN_KMEANS_LOCKED_PIPELINE = "freq_raw_6blocks_equal_cosine"
-EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM = "season_median_imputed_guard_standardized_clipped_freq_6blocks_equal"
+EUCLIDEAN_KMEANS_LOCKED_SPACE_TRANSFORM = "season_median_imputed_league_standardized_clipped_freq_6blocks_equal"
 EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC = "cosine"
 GALAXY_SIMILAR_PLAYER_COUNT = 5
 GALAXY_CLUSTER_KNN_COUNT = 2
@@ -395,16 +395,19 @@ EUCLIDEAN_KMEANS_LOCKED_ASSIGNMENTS_PATH = Path(
         str(
             first_existing_path(
                 [
-                    LOCAL_PRODUCTION_OUTPUT_DIR / "euclidean_kmeans_locked_assignments.csv",
+                    # The repo's own assignments are the source of truth. A stale
+                    # local export must never silently outrank them.
                     BACKEND_DATA_DIR / "euclidean_kmeans_locked_assignments.csv",
+                    LOCAL_PRODUCTION_OUTPUT_DIR / "euclidean_kmeans_locked_assignments.csv",
                 ]
             )
         ),
     )
 )
+# Repo-local assets always take precedence over a stale local export.
 GALAXY_PRECOMPUTED_PATHS = [
-    LOCAL_PRODUCTION_OUTPUT_DIR / "galaxy_precomputed.json",
     BACKEND_DATA_DIR / "galaxy_precomputed.json",
+    LOCAL_PRODUCTION_OUTPUT_DIR / "galaxy_precomputed.json",
     BACKEND_DIR.parent / "data" / "galaxy_precomputed.json",
     BACKEND_DIR.parent / "galaxy_precomputed.json",
 ]
@@ -417,8 +420,8 @@ BREAKDOWN_PRECOMPUTED_PATHS = {
 _BREAKDOWN_PRECOMPUTED_CACHE: Dict[str, Dict[str, object]] = {}
 
 SIMILAR_PLAYERS_PATHS = [
-    LOCAL_PRODUCTION_OUTPUT_DIR / "similar_players_precomputed_production.csv",
     BACKEND_DATA_DIR / "similar_players_precomputed_production.csv",
+    LOCAL_PRODUCTION_OUTPUT_DIR / "similar_players_precomputed_production.csv",
     BACKEND_DIR.parent / "data" / "similar_players_precomputed_production.csv",
     BACKEND_DIR.parent / "similar_players_precomputed_production.csv",
     LOCAL_PRODUCTION_OUTPUT_DIR / "similar_players.csv",
@@ -446,6 +449,194 @@ SIMILAR_PLAYERS_REQUIRED_DETAIL_COLUMNS = [
     "playtypes_distance",
     *SIMILAR_PLAYERS_BLOCK_SCORE_COLUMNS,
 ]
+
+# ---------------------------------------------------------------------------
+# v4 similarity model (sim.ipynb port -- see backend/similarity_engine.py)
+# ---------------------------------------------------------------------------
+# Comps come from the precomputed asset, never from a live fit: the engine is a
+# population model that takes a couple of seconds to fit and must never sit in a
+# request path. scripts/precompute_similarity_v4.py writes it.
+SIMILARITY_V4_PATHS = [
+    BACKEND_DATA_DIR / "similarity_v4.json",
+    LOCAL_PRODUCTION_OUTPUT_DIR / "similarity_v4.json",
+    BACKEND_DIR.parent / "data" / "similarity_v4.json",
+    BACKEND_DIR.parent / "similarity_v4.json",
+]
+_SIMILARITY_V4_CACHE: Dict[str, object] = {"path": None, "mtime_ns": None, "payload": None}
+SIMILARITY_V4_DOMAINS = ("overall", "offense", "defense")
+# Positional layout of one comp record; mirrors meta.comp_record_fields.
+_V4_TARGET, _V4_OFF_SIM, _V4_DEF_SIM, _V4_ALL_SIM = 0, 1, 2, 3
+_V4_OFF_DIST, _V4_DEF_DIST, _V4_ALL_DIST, _V4_ALIKE, _V4_DIFFERENT = 4, 5, 6, 7, 8
+
+
+def find_similarity_v4_path() -> Optional[Path]:
+    for candidate_path in SIMILARITY_V4_PATHS:
+        if candidate_path.exists():
+            return candidate_path
+    return None
+
+
+def load_similarity_v4_payload() -> Optional[Dict[str, object]]:
+    """Load and cache the v4 similarity asset, reloading when the file changes."""
+    payload_path = find_similarity_v4_path()
+    if payload_path is None:
+        return None
+    mtime_ns = payload_path.stat().st_mtime_ns
+    if (
+        _SIMILARITY_V4_CACHE["path"] == str(payload_path)
+        and _SIMILARITY_V4_CACHE["mtime_ns"] == mtime_ns
+        and _SIMILARITY_V4_CACHE["payload"] is not None
+    ):
+        return _SIMILARITY_V4_CACHE["payload"]  # type: ignore[return-value]
+    try:
+        payload = json.loads(payload_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(payload, dict) or "players" not in payload:
+        return None
+    _SIMILARITY_V4_CACHE.update({"path": str(payload_path), "mtime_ns": mtime_ns, "payload": payload})
+    return payload
+
+
+def expand_similarity_v4_comp(
+    record: List[object],
+    payload: Dict[str, object],
+    rank_index: int,
+) -> Dict[str, object]:
+    """Turn one positional comp record into named fields."""
+    player_keys = payload.get("player_keys", [])
+    block_labels = payload.get("block_labels", [])
+
+    def block_names(ids: object) -> List[str]:
+        if not isinstance(ids, list):
+            return []
+        return [str(block_labels[int(i)]) for i in ids if 0 <= int(i) < len(block_labels)]
+
+    target_index = int(record[_V4_TARGET])
+    return {
+        "rank": int(rank_index),
+        "player_key": str(player_keys[target_index]) if 0 <= target_index < len(player_keys) else "",
+        "off_similarity": float(record[_V4_OFF_SIM]),
+        "def_similarity": float(record[_V4_DEF_SIM]),
+        "overall_similarity": float(record[_V4_ALL_SIM]),
+        "off_distance": float(record[_V4_OFF_DIST]),
+        "def_distance": float(record[_V4_DEF_DIST]),
+        "overall_distance": float(record[_V4_ALL_DIST]),
+        "most_alike_blocks": block_names(record[_V4_ALIKE]),
+        "most_different_blocks": block_names(record[_V4_DIFFERENT]),
+    }
+
+
+def build_similarity_v4_attention(player_entry: Dict[str, object], payload: Dict[str, object]) -> Dict[str, object]:
+    """The paper's two attention tables for one player, ranked highest-first."""
+    family_labels = payload.get("family_labels", [])
+    skillset_labels = payload.get("skillset_labels", [])
+
+    def rows(labels: List[Dict[str, object]], attention_key: str, learned_key: str) -> List[Dict[str, object]]:
+        attention = player_entry.get(attention_key, []) or []
+        learned = player_entry.get(learned_key, []) or []
+        built = []
+        for index, label in enumerate(labels):
+            if index >= len(attention):
+                break
+            built.append({
+                **label,
+                "attention_pct": float(attention[index]),
+                "learned_w": float(learned[index]) if index < len(learned) else 0.0,
+            })
+        built.sort(key=lambda row: -row["attention_pct"])
+        return built
+
+    return {
+        "off_weight": float(player_entry.get("off_weight", 0.5)),
+        "def_weight": float(player_entry.get("def_weight", 0.5)),
+        "families": rows(family_labels, "family_attention", "family_learned_w"),
+        "skillsets": rows(skillset_labels, "skillset_attention", "skillset_learned_w"),
+    }
+
+
+def build_similarity_edges_from_v4(
+    guards: pd.DataFrame,
+    labels: np.ndarray,
+    payload: Dict[str, object],
+    top_n: int = GALAXY_SIMILAR_PLAYER_COUNT,
+) -> Optional[List[Dict[str, object]]]:
+    """Galaxy similarity edges taken from the v4 model.
+
+    Emits the legacy edge shape so existing consumers keep working, plus the
+    offense / defense / overall fields the v4 model adds. Edge geometry follows
+    the OVERALL ranking; the other two rankings ride along on each source edge
+    set so the detail panel can switch domains without another request.
+    """
+    players = payload.get("players", {})
+    if not isinstance(players, dict) or not players:
+        return None
+
+    cluster_by_key: Dict[str, int] = {}
+    meta_by_key: Dict[str, Dict[str, str]] = {}
+    for row_index, row in guards.reset_index(drop=True).iterrows():
+        player_key = str(row["player_key"])
+        cluster_by_key[player_key] = int(labels[row_index])
+        meta_by_key[player_key] = {
+            "player_name": str(row["Player Name"]),
+            "season": str(row["Season"]),
+            "team": str(row["teams_played"]),
+            "position": str(row["position"]),
+        }
+
+    edges: List[Dict[str, object]] = []
+    for source_key, entry in players.items():
+        source_meta = meta_by_key.get(str(source_key))
+        if source_meta is None:
+            continue
+        comps = entry.get("comps", {})
+        if not isinstance(comps, dict):
+            continue
+        by_domain = {
+            domain: [
+                expand_similarity_v4_comp(record, payload, rank)
+                for rank, record in enumerate(comps.get(domain, []) or [], start=1)
+            ]
+            for domain in SIMILARITY_V4_DOMAINS
+        }
+        for comp in by_domain["overall"][:top_n]:
+            target_key = comp["player_key"]
+            target_meta = meta_by_key.get(target_key)
+            if target_meta is None:
+                continue
+            edges.append({
+                "source": str(source_key),
+                "target": target_key,
+                "source_player_name": source_meta["player_name"],
+                "source_season": source_meta["season"],
+                "source_team": source_meta["team"],
+                "source_position": source_meta["position"],
+                "target_player_name": target_meta["player_name"],
+                "target_season": target_meta["season"],
+                "target_team": target_meta["team"],
+                "target_position": target_meta["position"],
+                "rank": int(comp["rank"]),
+                "truth_distance": comp["overall_distance"],
+                "similarity_score": comp["overall_similarity"],
+                "similarity_distance_metric": "v4_personalized",
+                "similarity_metric_used": "v4_personalized",
+                "off_similarity": comp["off_similarity"],
+                "def_similarity": comp["def_similarity"],
+                "overall_similarity": comp["overall_similarity"],
+                "off_distance": comp["off_distance"],
+                "def_distance": comp["def_distance"],
+                "overall_distance": comp["overall_distance"],
+                "strongest_similarity_blocks": ", ".join(comp["most_alike_blocks"]),
+                "biggest_difference_blocks": ", ".join(comp["most_different_blocks"]),
+                "block_scores": {},
+                "same_cluster": bool(
+                    cluster_by_key.get(str(source_key)) == cluster_by_key.get(target_key)
+                ),
+                "source_cluster": int(cluster_by_key.get(str(source_key), 0)),
+                "target_cluster": int(cluster_by_key.get(target_key, 0)),
+            })
+    return edges or None
+
 
 HEADSHOT_MAP_PATH = Path(
     os.environ.get(
@@ -671,37 +862,47 @@ HEADSHOT_NAME_ALIASES = {
     "jahmaimashack": "jahmaimashack",
 }
 
-EUCLIDEAN_KMEANS_LOCKED_EXCLUDED_NAMES = {
-    "scottie barnes",
-}
+# Every player-season in the dataset is clustered. Nobody is held out of the
+# archetype model any more: the model now spans all five positions, so the
+# forwards and bigs that used to distort a guard-only fit are ordinary members
+# of it.
+EUCLIDEAN_KMEANS_LOCKED_EXCLUDED_NAMES = set()
 EUCLIDEAN_KMEANS_CLUSTER_NAME_BY_NUMBER = {
-    1: "3PT-Reliant Sharpshooter",
-    2: "Slashing Oriented, Scoring + Playmaking Threat",
-    3: "3PT Oriented Lock-Down Secondary Handler",
-    4: "Expanded Role Sharpshooter",
-    5: "Playmaking and 3PT Spark Plug",
-    6: "3-Level Scoring and Playmaking Machine",
-    7: "Talented Pass-First Point",
-    8: "Limited Playmaking Spark Plug",
-    9: "Inside-the-Arc Scoring and Playmaking Machine",
-    10: "Streaky Shooting Defensive Savant",
-    11: "Slashing Oriented Lock-Down Point",
-    12: "3-Level Scoring Machine",
+    1: 'Primary Offensive Engine',
+    2: 'Downhill Table-Setting Point',
+    3: 'Pull-Up Shooting Combo Guard',
+    4: 'Point-of-Attack Connector Guard',
+    5: 'Isolation-Heavy Mid-Range Maestro',
+    6: 'Two-Level Movement Shooter',
+    7: '3PT-Reliant Sharpshooter',
+    8: 'Limited-Playmaking Scoring Wing',
+    9: 'Corner-Spacing 3-and-D Wing',
+    10: 'High-Efficiency Off-Ball Forward',
+    11: 'Interior Playmaking Hub',
+    12: 'Skilled Two-Way Scoring Big',
+    13: 'Floor-Spacing Stretch Big',
+    14: 'Conventional Two-Way Big',
+    15: 'Physical Paint Finisher',
+    16: 'Vertical Spacing Rim Protector',
 }
 
 EUCLIDEAN_KMEANS_CLUSTER_DESCRIPTION_BY_NUMBER = {
-    1: 'These players are defined by an extremely three-point-heavy reliant profile, almost entirely built around off-ball shooting tendencies. The heat chart makes this evident: catch-and-shoot 3PA frequency, 3PA frequency, 3P accuracy, points from 3s per 75, percent of FGA from 3PA, and assisted 3PM rates all sit well above the mean. This archetype’s offensive value comes from spacing the floor, relocating off the ball, and punishing defenses through catch and shoot three point looks.\n\nThe key difference between this group and the Expanded Role Sharpshooter archetype is offensive versatility. The Expanded Role Sharpshooter also shares a top tier off-ball three-point skillset, but that group adds a meaningful midrange layer to its scoring profile as well. The 3PT-Reliant Sharpshooter, on the other hand, scores almost solely through off-ball three-point scenarios. The low average-dribbles-before-3PA value reinforces this idea even further: these are not players that regularly create shots off the dribble.\n\nOutside of three-point shooting, the offensive profile is very limited. The median midrange, rim-pressure, drive, and playmaking features are all well below the average guard value. This makes this archetype highly concentrated: these players can be extremely valuable when their shooting is actively bending the defense, but their impact is completely tied to how their shot is feeling that day.',
-    2: 'These players are defined by their ability to consistently bend defenses through downhill pressure. The heat chart makes this evident: restricted area frequency, paint non-RA frequency, drive FGA frequency, points from drives per 75, and percent of FGA coming from drives are all well above the mean. This is not really a pull-up shot-making archetype or a high-volume perimeter creation group, the offensive value of this group instead mainly comes from getting to the rim, forcing rotations, and generating drive and kick opportunities.\n\nMost of the playmaking features also sit above average, especially the potential assist frequency and potential assist-to-FGA ratio, showing that these players are not purely slashers, but they also show a willingness to create for others. But these playmaking features are simply not strong enough to push this group into true primary offensive engine territory.\n\nThis playmaking gap shows up especially when comparing them to their more offensively complete counterpart in Cluster #10, the Midrange + Slashing Oriented, Scoring + Playmaking Threat archetype. That group has a noticeably stronger passing profile and usually holds the ball for longer periods of time. The largest separation between these two clusters though is the wide gap in mid-range self creation and production. Cluster #2 gets most of its scoring pressure from drives and paint touches, while the Midrange + Slashing Oriented, Scoring + Playmaking Threats add a much more nuanced and efficient mid-range bag to their skillset.',
-    3: 'These players are defined by their exceptional defensive metrics and their offensive reliance on shooting threes. The heat chart captures this profile clearly: most defensive indicators, including blocks per 75, steals per 75, deflections per 75, and other defensive metrics, sit well above the mean. This creates an archetype built around defensive value first.\n\nScoring is a different story. Most scoring features fall well below the mean, with three-point shooting standing out as the one area closer to average. The combination of above-average percent of FGA from three, assisted three-point rate, and catch-and-shoot three-point frequency points to a player who relies heavily on off-ball perimeter opportunities. These players are not typically bending defenses with their shooting abilities though. Their elevated wide-open three-point frequency suggests that their perimeter value comes more from defenses daring them to shoot.',
-    4: 'These players are defined by an off-ball-centered play style, built around catch-and-shoot opportunities and assisted field goal creation. The heat chart makes that clear: 3PT shooting, catch-and-shoot efficiency, and assisted 3PM rates all sit well above the mean, showing how effective this archetype is in off-ball perimeter scoring situations.\n\nAt first glance, this group may seem similar to the 3PT-Reliant Sharpshooter archetype, but there are a few important differences. The Expanded Role Sharpshooter is more offensively versatile. While the 3PT-Reliant Sharpshooter skillset is almost entirely dependent on perimeter shooting, this archetype adds a meaningful midrange layer as well.\n\nThis shows up clearly in the median profile, where every midrange feature sits above the average guard value. This makes the group less one-dimensional than their 3PT-Reliant Sharpshooter counterpart: they still provide high-level off-ball three point gravity, but they also tend to attack the midrange area through handoffs and pull-up opportunities off three point pump fakes. Other than off-ball three point scenarios and some midrange self creation, the offensive profile of this archetype is quite barren: the playmaking, rim-pressure metrics are all well below the mean.',
-    5: 'These players are defined by a balanced secondary-creator skillset built around above-average three point shooting, capable playmaking, and a slightly positive defensive impact. The heat chart makes this clear: wide-open 3PA frequency, pull-up 3PA frequency, catch-and-shoot 3PA frequency, 3PA frequency, 3P accuracy, points from 3s per 75, and percent of FGA from 3PA all sit above the mean. This is not a dominant self-creation perimeter archetype, but these players provide their outside shooting value through a mixture of spot-up shooting, movement shooting, and occasional pull-up attempts.\n\nThe playmaking profile is also silently impressive. The median values for dribble-to-turnover ratio, potential assist-to-turnover ratio, pass-turnover ratio, pass-shot ratio, and potential assist-FGA ratio are all above average, showing that this group is comfortable creating quality shots for their teammates. These metrics are not high enough to put these players in primary offensive engine conversations though. But their playmaking skillset is still developed enough to be considered useful as a secondary creator.\n\nThe defensive metrics are not elite, but they are slightly positive overall. The above-average deflections, offensive fouls drawn, and the on/off metrics suggest a scrappy defensive style built more around active hands than athletic dominance. This archetype’s value comes from this well-rounded combination of adept three point shooting, functional secondary playmaking, and enough defensive activity to stay on the floor in competitive lineups.',
-    6: 'These players are defined by their ability to create shots for themselves and others from all three levels while carrying the ball for a significant portion of the game. The heat chart makes this clear: the 3pt shooting, midrange, rim pressure and playmaking features all sit well above the mean.\n\nHaving absurdly low assisted FGM rates, these players are clearly creating their own shots instead of relying on teammates to set them up. The Tight/very tight 3PA frequency, Pull-up 3PA frequency, Average dribbles before 3PA, Tight/very tight 2PA frequency, Pull-up 2PA frequency all being well above the mean exemplify this superb self creation ability.\n\nThe playmaking features are also clearly above average, which separates this archetype from their pure scoring counterpart in the 3-Level Scoring Threat archetype. Overall, this archetype represents a complete on-ball offensive genius, built around self-created shooting, three-level scoring, and playmaking talent.',
-    7: 'These players are defined almost entirely by their elite playmaking skillset. The heat chart makes this extremely clear: dribble-to-turnover ratio, potential assist-to-turnover ratio, assist frequency, pass-turnover ratio, pass-shot ratio, potential assist frequency, and potential assist-FGA ratio are all well above the mean. Compared to every other archetype, this cluster holds by far the most impressive passing profile in the model.\n\nThe scoring profile is much more limited though. The three point metrics are mostly below average, especially 3PA frequency, points from threes per 75, and percent of FGA from 3PA. This group also does not stand out as a dominant rim-pressure or self-created scoring archetype. Their offensive value instead comes purely from playmaking and generating quality looks for teammates.\n\nThis archetype has some similarities to the Rim-Oriented, Lock-Down Point archetype, but the differences are pretty clear. The Talented, Pass-First Point has a sizable playmaking advantage, with much stronger passing volume and efficiency indicators. However, the defensive gap between the two groups is just as large in the other direction. The Rim-Oriented, Lock-Down Point archetype is built around remarkable defensive metrics, while this cluster is only slightly above average defensively. Overall, this archetype represents the purest table-setting guards in the model: elite passers who can run an offense, but whose value depends much more on playmaking than scoring or defense.',
-    8: 'This is the second most populous cluster, and it is also one of the weakest grouped together cluster. These players are mainly grouped together by their limited playmaking impact. The heat chart makes this clear, with every median playmaking feature sitting well below the average guard value.\n\nThe scoring profiles within this archetype are less homogeneous than most other clusters. Some of these players create their own shots, while others do more of their damage off the catch, and their scoring can come from different areas across all three levels. What ties them together though is this shared score-first mentality.\n\nIn other words, this archetype is made up of guards who can get buckets in different ways, but their unwillingness to create for their teammates to become complete offensive engines. Their value comes from individual scoring rather than from participating and creating in a broader offensive picture.',
-    9: 'These players are defined by their ability to consistently create offense inside the arc. Unlike the 3-Level Scoring + Playmaking Threat archetype, this group is not built around self created three point ability. The heat chart makes that clear: 3PA frequency, points from 3s per 75, percent of FGA from 3PA, and assisted 3PM rates are all below the average guard value. This lack of consistent perimeter volume is the main thing separating this archetype from the more complete three-level creators.\n\nInside the arc though, this cluster is extremely impressive. This archetype holds by far the strongest midrange profile in the model. Pull-up 2PA frequency, percent of FGA from midrange, and points from midrange per 75 all sit dramatically above the mean, showing how comfortable these players are at creating shots from the midrange area. The rim penetration metrics are also consistently well above average. Paint non-RA frequency, drive FGA frequency, percent of paint FGA from drives, points from drives per 75, and percent of FGA from drives all point toward a strong downhill scoring profile.\n\nAlso holding impressive playmaking metrics, this archetype becomes more than just an inside-the-arc scorer. These players can pressure the paint, self-create from the midrange at an elite level while simultaneously creating high quality opportunities for their teammates, signs of a true primary creator. Their offensive profile may not stretch defenses as much from three, but inside the arc, this is one of the most complete creator archetypes in the model.',
-    10: 'These players are almost exclusively characterized by their world-class defensive abilities. The heat chart illustrates this further: Blocks per 75, Deflections per 75, Contested shot frequency, Opponent FG% difference are all consistently above the mean. Also, considering that guard defense usually does not disrupt opposing offenses as much as rim-protecting bigs or versatile wings, the negative opponent shot quality on/off metric is even more impressive than what it appears.\n\nUnfortunately, these players share a completely antithetical story on offense. Portrayed by their substantially low scoring features, these players mostly score from assisted open three pointers or dunks. These players are well below average at creating shots for others as well.\n\nAll things considered, this archetype holds undoubtedly the finest defending guards in the NBA, but the lack of reliant offensive skill separates this group from other defensive-minded archetypes.',
-    11: 'These players are embodied by their limited scoring skillsets paired with exemplary defensive and secondary playmaking skills. The heat chart elucidates this: among all the scoring metrics, only the restricted area, dunking, and assisted three point rates are above average. The rest of the scoring metrics are well below the average.\n\nThe main value of this archetype comes from their defensive skillset. This can be seen in the heat chart where all of the defensive metrics, including the on/off metrics, are all well above the mean. This archetype also shows a willingness to pass. Features such as Potential assist-FGA ratio, Pass-shot ratio and all the other playmaking features being above average signify this.\n\nThis partially developed playmaking ability is the only thing separating this archetype from its pure defensive counterpart in the Streaky Shooting Defensive Savant.',
-    12: 'These players are defined by an isolation-heavy playstyle and the ability to take and make difficult, contested shots from all three levels. The heat chart makes that pretty clear: pull-up scoring, tight/very tight shot-making, and the broader three-level scoring features all sit well above the mean, with most of them clearing the +1.5 standard deviation range.\n\nThis archetype has its fair share of lower-percentile features though. The heat chart makes it apparent that there is an obvious inadequacy in playmaking. These players are generally not creating as much for their teammates; almost all of the median playmaking features being well below the mean value. A less obvious inefficiency within this archetype is the lack of consistent free-throw generation, where they also lag behind the true elite offensive guards.\n\nThis combination of an unconvincing passing skill-set paired with inconsistent free throw generation is the only thing separating this group from the 3-Level Scoring + Playmaking Threat archetype.',
+    1: 'These players are the offensive centerpiece of everything their team does, and the heat chart shows it in the two blocks that matter most for on-ball creation. The playmaking block is the strongest in the entire model: box creation sits at +2.50, offensive load at +2.17, points created from assists at +1.87, assist frequency at +1.86, and crafted passer rating at +1.66. Nothing else in the league comes close to carrying this much of an offense.\n\nWhat separates this archetype from every other high-usage group is deep off-the-dribble shooting. Seven-plus-dribble 3PA frequency sits at +2.94 and three-to-six-dribble 3PA frequency at +2.51, both the highest values in the model, and pull-up 3PA frequency reaches +2.67. These are players who generate their own three-point looks from anywhere on the floor after long possessions, which is why average seconds per touch (+1.87) and dribbles per touch (+1.84) are also extreme. The strongly negative assisted-FGM rates on both twos and threes confirm the same thing from the other direction: almost nothing they score is set up by someone else.\n\nThey pressure the rim as well, with points from drives at +1.75 and drive FGA frequency at +1.65, so defenses cannot simply run them off the line. The one consistent weakness is defense, where the entire block sits at -0.36 and contested shot frequency at -0.98. That is partly a real limitation and partly a workload effect: carrying this much offense leaves less available on the other end.\n\nThe nearest comparison is the Isolation-Heavy Mid-Range Maestro, which matches the shot-making but not the passing. This group creates far more for teammates, and creates it from three rather than from the mid-range.',
+    2: "These players run an offense from the paint rather than from the arc. The playmaking block sits at +0.92, driven by potential assists per 75 at +1.70, points created from assists at +1.67, assist frequency at +1.60, and crafted passer rating at +1.49. Just as importantly, potential assist-to-turnover ratio is at +1.30, so this is high-volume passing that stays under control.\n\nThe route to those assists is downhill pressure, not perimeter gravity. Percent of FGA from drives is the defining feature at +1.57, with drive FGA frequency at +1.14 and points from drives at +1.00. Touch metrics reinforce the picture: passes received per 75 at +1.64, dribbles per touch at +1.61, seconds per touch at +1.57, and touches per 75 at +1.38. These players hold the ball, get into the paint, and pass out of it.\n\nThe gap in the profile is three-point volume. Three-point accuracy is fine at +0.12, but zero-to-one dribble 3PA frequency is at -0.55, 3PA frequency at -0.37, and points from threes at -0.43. They can make an open three; they simply do not hunt them. Because they also finish poorly at the rim once they get there (restricted area accuracy -0.54, dunks -0.80), the drives function more as a passing mechanism than as a scoring one.\n\nThe contrast with the Primary Offensive Engine is entirely about self-created shooting. Both groups run an offense, but the Engine adds elite pull-up three-point volume, while this archetype's value stops at the point where the pass has to become a shot.",
+    3: 'These players are microwave scorers who create their own looks from the perimeter without carrying a full offensive load. The signature is off-the-dribble three-point volume: three-to-six-dribble 3PA frequency at +1.28, seven-plus-dribble 3PA frequency at +0.76, and pull-up 3PA frequency at +1.16, all sitting on top of an above-average overall 3PA frequency of +0.81. Pick-and-roll ball handler frequency at +1.23 shows where most of those looks come from.\n\nThey add real rim pressure to that shooting. Drive FGA frequency is at +1.06 and points from drives at +1.00, and percent of FGA from drives is at +0.83. Combined with a mid-range block at +0.19, this is a genuine three-level scoring profile, and the sharply negative assisted-2PT-FGM rate (-1.03) confirms these shots are self-created.\n\nThe playmaking block is positive at +0.38, but the composition matters: offensive load (+0.99) and box creation (+0.77) are much stronger than the passing-quality metrics, and assists on/off is actually negative at -0.30. These are players who use possessions and generate shots, not players who make their teammates better. Defense is the clear weakness at -0.38 across the board.\n\nThe separation from the Primary Offensive Engine is scale and passing. This group shares the shot profile but not the responsibility: box creation is +0.77 here against +2.50 there. The separation from the Two-Level Movement Shooter is who creates the shot; that archetype gets its looks from screens and handoffs, while this one gets them off the dribble.',
+    4: 'These players earn their minutes through defense and ball security rather than scoring. The defensive block sits at +0.04, which understates the group because the two features that actually measure perimeter disruption are strongly positive: offensive fouls drawn frequency at +0.81 and deflections per 75 at +0.78, with adjusted opponent FG% difference at +0.25. Blocks (-0.52) and contested shot frequency (-0.59) are negative simply because those are rim-protection statistics that no perimeter defender accumulates.\n\nThe offensive value is connective. Potential assist-to-turnover ratio is the strongest feature in the playmaking block at +0.85, ahead of potential assists per 75 (+0.74), assist frequency (+0.70), and points created from assists (+0.70). They hold the ball a fair amount (dribbles per touch +1.06, seconds per touch +0.98, passes received per 75 +0.93) and rarely waste possessions with it.\n\nScoring is the honest limitation. The mid-range block is at -0.33, rim pressure at -0.27, and the finishing features are poor: dunks at -0.74, restricted area frequency at -0.72, restricted area accuracy at -0.65. What shooting exists is spot-up and low-volume, with percent of FGA from three at +0.50 and wide-open 3PA frequency at +0.31 but tight 3PA frequency at -0.34. Defenses concede these threes and live with the result.\n\nAgainst the Downhill Table-Setting Point, the trade is clear: this group is meaningfully better defensively and far less productive as a passer and paint threat.',
+    5: 'These players are the best pure shot-makers in the model, and the mid-range block makes it obvious. Points from mid-range per 75 is at +2.35, mid-range frequency at +2.29, open 2PA frequency at +2.15, tight/very tight 2PA frequency at +2.15, and percent of FGA from mid-range at +1.77. The assisted-2PT rate at -1.16 confirms these are self-created looks, and the accuracy features stay positive across the board, so the volume is not empty.\n\nThe playtype signature is equally clear: pull-up 2PA frequency at +2.45 and isolation frequency at +1.74, with pick-and-roll ball handler frequency at +1.52. They also shoot off the dribble from three, with three-to-six-dribble 3PA frequency at +1.18 and seven-plus-dribble 3PA frequency at +0.77, and they hit those shots (seven-plus-dribble accuracy +0.64). Rim pressure is real too, at +0.57 with points from drives at +1.51.\n\nThe playmaking block is positive at +0.85, but it is carried almost entirely by usage rather than passing: offensive load is at +1.58 and box creation at +1.48, while assists on/off sits at +0.10 and potential assist-to-turnover ratio at +0.15. They generate a lot of offense; they do not particularly elevate the players around them. Defense is the weakest part of the profile at -0.38.\n\nThe distinction from the Primary Offensive Engine is where the difficulty lives. Both are elite creators, but the Engine creates from three and passes at an elite level, while this archetype takes and makes the hardest two-point shots in basketball.',
+    6: 'These players get open without the ball and punish defenses from two levels. The playtype block tells the story directly: off-screen frequency at +1.03, handoff frequency at +0.94, off-screen PPP at +0.80, catch-and-shoot 3PA frequency at +0.76, and handoff PPP at +0.71. This is movement shooting, not spot-up shooting, and the efficiency features confirm they are good at it rather than merely willing.\n\nThe three-point block sits at +0.51, with open 3PA frequency at +0.94, points from threes at +0.93, 3PA frequency at +0.83, and tight/very tight 3PA frequency at +0.80. The last of those matters: they take contested threes too, which is what separates a movement shooter from a stationary one.\n\nWhat makes this archetype distinct is the mid-range layer at +0.67. Average 2PT shot distance is at +1.32, percent of FGA from mid-range at +1.03, points from mid-range at +0.91, and pull-up 2PA frequency at +0.69. Coming off a screen or a handoff, they will take the pull-up two when the three is taken away.\n\nOutside those two levels the profile is thin. Rim pressure is at -0.25 with restricted area frequency at -0.91, playmaking is at -0.13, and defense is the weakest block at -0.45. Against the 3PT-Reliant Sharpshooter, the difference is both the mid-range game and the mechanism: this group runs to get open, while the Sharpshooter stands still and waits.',
+    7: 'These players do one thing at a very high level and very little else. Percent of FGA from three sits at +1.44, zero-to-one dribble 3PA frequency at +1.38, points from threes per 75 at +1.13, 3PA frequency at +1.06, and open 3PA frequency at +0.90. Catch-and-shoot 3PA frequency at +1.35 and spot-up frequency at +0.72 confirm that essentially all of it comes off the catch.\n\nThe off-the-dribble features are the mirror image: seven-plus-dribble 3PT accuracy at -0.74, seven-plus-dribble frequency at -0.46, and three-to-six-dribble frequency at -0.42. Isolation PPP at -1.26, touches per 75 at -1.01, and seconds per touch at -0.78 all say the same thing. These players do not hold the ball, and when they do, nothing good happens.\n\nEverything inside the arc is a weakness. The rim pressure block is at -0.55, with restricted area frequency at -1.12, paint non-RA frequency at -1.03, and drive FGA frequency at -0.75. Playmaking is at -0.45 and defense at -0.36. The value here is entirely spacing: they bend a defense by standing in the right place and making the shot.\n\nThe comparison to the Two-Level Movement Shooter is the cleanest in the model. Both groups are high-volume, high-accuracy shooters, but that archetype adds a mid-range counter and generates its own separation through screens, while this one is dependent on someone else creating the look.',
+    8: "This is the largest archetype in the model, and it is defined more by the absence of a specialty than by the presence of one. The three-point block sits at +0.01, mid-range at +0.06, and rim pressure at +0.01. Almost every scoring feature is within a fraction of the league average, which is exactly why these players cluster together: there is no dimension on which they clearly separate from the field.\n\nThe one consistently negative block is playmaking, at -0.43. The on/off features are the worst part of it, with assists on/off at -0.67, eFG% on/off at -0.63, and points per 100 on/off at -0.57. Teams do not run better when these players are on the floor. Defense is also below average at -0.30, with D-LEBRON at -0.56.\n\nThere is a mild self-creation lean inside the arc, with percent of FGA from drives at +0.48 and drive FGA frequency at +0.29, and the playtype efficiency features are slightly positive across spot-ups, handoffs, and isolations. These are competent scorers who can be given the ball in a variety of situations without the offense breaking.\n\nThe honest summary is that this archetype is the league's replacement level for a scoring wing. The players in it can fill a role, but they neither space the floor at the level of the 3PT-Reliant Sharpshooter, defend at the level of the Corner-Spacing 3-and-D Wing, nor create at the level of the Pull-Up Shooting Combo Guard.",
+    9: 'These players are built to defend, space the corners, and touch the ball as little as possible in between. The defensive block sits at -0.01, which is a poor summary of the group: deflections per 75 is at +0.39, adjusted opponent FG% difference at +0.04, and adjusted D-LEBRON at +0.03, all achieved without the rim-protection volume that inflates the block for bigs. Among perimeter players, this is the strongest defensive profile in the model outside the Point-of-Attack Connector Guard.\n\nOffensively the role is narrow by design. The assisted 3PT-FGM rate is at +0.64 and percent of FGA from three at +0.39, but every off-the-dribble shooting feature collapses: three-to-six-dribble 3PT accuracy at -0.84, seven-plus-dribble accuracy at -0.79, three-to-six-dribble frequency at -0.67. Touches per 75 at -0.97 and passes received at -0.99 confirm they are not asked to do more.\n\nThe mid-range block at -0.82 is the weakest of any wing archetype, and mid-range accuracy at -1.65 is close to the worst value in the model. Playmaking is at -0.66, with offensive load at -1.03 and box creation at -0.94. This is a genuinely one-way role: defend, stand in the corner, take the open three.\n\nAgainst the 3PT-Reliant Sharpshooter, the trade is explicit. That archetype is a far better and higher-volume shooter; this one is a far better defender and takes a fraction of the shots.',
+    10: "This archetype is the clearest example in the model of a group defined by efficiency rather than volume. Nearly every rate statistic is positive and nearly every usage statistic is negative. Off-screen PPP sits at +0.69, spot-up frequency at +0.65, handoff PPP at +0.59, pick-and-roll ball handler PPP at +0.54, and isolation PPP at +0.51, while pick-and-roll ball handler frequency is at -0.58, touches per 75 at -0.48, dribbles per touch at -0.48, and pull-up 2PA frequency at -0.49.\n\nThe shooting is real and it is almost entirely assisted. Assisted 3PT-FGM rate is at +0.52, zero-to-one dribble 3PA frequency at +0.45, wide-open 3PA frequency at +0.41, and three-point accuracy at +0.39. Inside the arc they finish well without hunting shots: restricted area accuracy at +0.27 and drive FG% at +0.13 against a paint non-RA frequency of -0.42.\n\nThe most distinctive feature is the on/off block. Assists on/off is at +0.61, eFG% on/off at +0.60, and points per 100 on/off at +0.54 — the highest impact values in the model outside the two engine archetypes — even though assist frequency (-0.52) and potential assists (-0.55) are well below average. These players do not create offense; they make the offense around them work, and the scoreboard notices.\n\nThe comparison to the Limited-Playmaking Scoring Wing is instructive, since the two occupy similar positions and similar usage. The difference is entirely conversion and impact: this group's on/off features are strongly positive where that group's are the worst in the model.",
+    11: 'This archetype runs an offense from inside the arc, and it contains the most recognizable non-guard playmakers in basketball. The playmaking block sits at +0.78, with points created from assists at +1.08, assist frequency at +1.04, crafted passer rating at +1.03, potential assists at +0.98, and assists on/off at +0.91. Touches per 75 at +1.24 confirms the offense genuinely runs through them.\n\nThey combine that with real interior scoring. The rim pressure block is at +0.50, with restricted area frequency at +1.23, paint non-RA frequency at +0.83, restricted area accuracy at +0.60, and drive FG% at +0.55. Cut frequency at +0.90 shows they also move without the ball rather than only operating as a hub.\n\nThe limitation is perimeter shooting, and it is severe. Tight/very tight 3PT accuracy is at -1.19, open 3PA frequency at -1.12, percent of FGA from three at -1.07, 3PA frequency at -1.05, and points from threes at -1.02. Catch-and-shoot 3PA frequency at -1.02 and pull-up 3PT accuracy at -1.05 close off both routes to the arc. Potential assist-to-turnover ratio at +0.12 is also modest for a group with this much passing volume, so the creation comes with real turnover cost.\n\nDefensively they hold up well, with adjusted D-LEBRON at +0.89 and deflections at +0.48. Against the Skilled Two-Way Scoring Big, this group passes far better and shoots far worse; against the Primary Offensive Engine, it is the same role played entirely inside the three-point line.',
+    12: 'These players are the most offensively complete bigs in the model, and the mid-range block is what separates them. Mid-range frequency sits at +1.16, points from mid-range at +1.13, percent of FGA from mid-range at +1.03, and open 2PA frequency at +0.93, with all three accuracy features positive. Paint non-RA frequency at +1.10 extends the same skill closer in. This is a genuine face-up and short-range scoring game, not just finishing.\n\nThey protect the rim at a high level while doing it. Blocks per 75 is at +1.39, opponent FGA per 75 at +1.31, contested shot frequency at +1.23, and adjusted D-LEBRON at +0.98. Worth noting: adjusted opponent FG% difference reads -0.93 for this group, which looks contradictory until you account for shot location. Interior defenders contest a much higher share of shots at the rim, where opponents convert at a far higher baseline rate than on the perimeter, so a raw FG%-difference metric systematically penalizes the players doing the most defensive work. The volume features are the more honest read here.\n\nThey also stretch the floor a little, with three-point accuracy at +0.28 and wide-open 3PA frequency at +0.25, although the volume features are negative and the off-the-dribble three is absent entirely.\n\nPlaymaking is neutral at +0.04, held up by assists on/off (+0.79) rather than by passing volume, and potential assist-to-turnover ratio at -0.77 is a real weakness. Against the Floor-Spacing Stretch Big, this group scores far more and from far more places; against the Vertical Spacing Rim Protector, it trades a little rim deterrence for an actual offensive skillset.',
+    13: "These players exist to pull a defense's biggest defender away from the basket. The shooting profile is modest in raw terms but decisive in context: assisted 3PT-FGM rate at +0.70, wide-open 3PA frequency at +0.68, percent of FGA from three at +0.46, zero-to-one dribble 3PA frequency at +0.41, and three-point accuracy at +0.24. Catch-and-shoot 3PA frequency at +0.61 and spot-up frequency at +0.52 confirm the shots are stationary and assisted.\n\nEverything else on offense is deliberately absent. The rim pressure block is at -0.38, with drive FGA frequency at -0.94, percent of FGA from drives at -0.94, points from drives at -0.89, and paint non-RA frequency at -0.77. Playmaking is at -0.61, with potential assists at -0.84 and box creation at -0.80. Every playtype efficiency feature outside of spot-ups is deeply negative: pick-and-roll PPP at -1.51, handoff PPP at -1.38, isolation PPP at -1.33.\n\nDefensively they are useful without being anchors. Contested shot frequency at +0.95 and opponent FGA per 75 at +0.81 show they defend interior volume, while blocks at +0.30 and adjusted D-LEBRON at +0.29 put the rim protection itself at slightly above average.\n\nThe distinction from the Skilled Two-Way Scoring Big is scoring range and self-creation. Both shoot; that archetype also posts, faces up, and scores from the mid-range at high volume, while this group's offensive contribution begins and ends with standing at the arc and making the open shot.",
+    14: 'This is the traditional interior big, and it is the most populous big archetype in the model. The defensive block sits at +0.49, with contested shot frequency at +1.51, opponent FGA per 75 at +1.42, blocks per 75 at +1.10, and adjusted D-LEBRON at +0.86. Offensively the value is concentrated at the basket: dunks per 75 at +1.14, restricted area frequency at +1.11, restricted area accuracy at +0.73, and cut frequency at +1.73.\n\nThe perimeter game is largely absent but not quite nonexistent. 3PA frequency at -1.43, percent of FGA from three at -1.43, and points from threes at -1.39 are all deeply negative, yet three-point accuracy is only at -0.13 and the assisted 3PT rate is at +0.75. These are players who will take the occasional open corner three and are not embarrassed by it; they simply are not asked to.\n\nThe gaps are playmaking and self-creation. The playmaking block is at -0.52, with potential assist-to-turnover ratio at -0.91 the worst feature in it. Percent of FGA from drives at -1.15 and drive FGA frequency at -1.03 confirm they do not attack off the bounce, and pick-and-roll PPP at -1.51 and handoff PPP at -1.40 show they are not effective in the actions that would let them.\n\nThe separation from the Vertical Spacing Rim Protector is a matter of degree in both directions: that archetype protects the rim harder and finishes more vertically, but cannot shoot at all, where this group retains a functional if unused jumper.',
+    15: "These players do their work in a narrow band of the floor and do it physically. Dunks per 75 sits at +1.68, restricted area frequency at +1.32, restricted area accuracy at +0.76, and paint non-RA frequency at +0.51, with cut frequency at +1.92. Defensively they cover a lot of ground: opponent FGA per 75 at +1.46, contested shot frequency at +1.33, adjusted D-LEBRON at +1.20, and blocks at +0.96.\n\nWhat separates this archetype from every other big group is the complete absence of shooting. Wide-open 3PT% is at -2.94, assisted 3PT-FGM rate at -2.88, three-point accuracy at -2.80, and zero-to-one dribble 3PT accuracy at -2.74. Catch-and-shoot accuracy at -2.86 and spot-up frequency at -1.84 confirm there is no perimeter option at all. Average 2PT shot distance at -1.10 shows how tightly their shot profile is compressed toward the basket.\n\nUnlike the Vertical Spacing Rim Protector, though, they have interior craft. The mid-range block at -0.34 is meaningfully better than that archetype's -1.06, mid-range accuracy is actually positive at +0.19, and paint non-RA frequency at +0.51 against that group's -0.56 shows real short-range scoring rather than pure lob finishing. Assists on/off at +0.40 also hints at competent short-roll passing.\n\nThe overall shape is a high-volume, high-efficiency interior scorer and defender with no floor spacing whatsoever. Whether that is valuable depends almost entirely on whether the other four players on the floor can shoot.",
+    16: 'This is the most extreme archetype in the model, and it is extreme in both directions. On defense, contested shot frequency sits at +1.81, blocks per 75 at +1.69, opponent FGA per 75 at +1.65, and adjusted D-LEBRON at +1.43 — the strongest rim-protection profile in basketball. On offense, dunks per 75 at +2.49 and restricted area frequency at +1.45 describe a player who scores almost exclusively at the basket, mostly off cuts and rolls (cut frequency +1.98).\n\nEverything else collapses. The three-point block is at -1.74, with assisted 3PT-FGM rate at -3.29, three-point accuracy at -3.18, zero-to-one dribble accuracy at -3.12, and wide-open 3PT% at -2.96. The mid-range block is at -1.06, with mid-range accuracy at -1.88 and average 2PT shot distance at -1.67. Spot-up PPP at -3.33 and catch-and-shoot accuracy at -2.86 are the lowest values anywhere in the model. Playmaking is at -0.71, with crafted passer rating at -1.12.\n\nOne measurement note is important for reading this group fairly. Adjusted opponent FG% difference reads -1.13, which appears to contradict everything else in the defensive block. It does not: these players contest a far higher share of shots at the rim than anyone else, and rim attempts convert at a much higher baseline rate than perimeter attempts, so a raw opponent FG% differential penalizes exactly the players doing the most valuable defensive work. The volume and impact features are the more reliable signal.\n\nThe result is the sharpest specialist profile in the league: a player who single-handedly changes what an opponent can do at the rim, and who gives back essentially all of the floor on the other end.',
 }
 
 
@@ -714,15 +915,11 @@ LOWER_IS_BETTER_PERCENTILE_FEATURES = {
     "OPP_EFG_PCT_ON_OFF",
 }
 
-PERCENTILE_AND_BADGE_EXCLUDED_NAMES = {
-    "scottie barnes",
-}
+# Percentiles are computed against every player-season in the same season.
+# No player is excluded from the peer pool.
+PERCENTILE_AND_BADGE_EXCLUDED_NAMES: set = set()
 
-DEFENSE_SCORE_CAPPED_NAMES = {
-    "james harden",
-    "damian lillard",
-    "stephen curry",
-}
+DEFENSE_SCORE_CAPPED_NAMES: set = set()
 
 ROWS_TO_REMOVE = []
 
@@ -738,17 +935,7 @@ KMEANS_TOL = 1e-4
 PCA_EXPLAINED_VAR_TARGET = 0.87
 COSINE_EPS = 1e-12
 
-CLUSTER_NAME_BY_NUMBER = {
-    1: "Pass-First, Perimeter Oriented Point",
-    2: "Perimeter Oriented, Spark Plug Point",
-    3: "Defensive Oriented, Playmaking Point",
-    4: "Slashing+Midrange Oriented Shot Creator",
-    5: "Prototypical 3-and-D Off-Guard",
-    6: "Defensive Minded Utility Off-Guard",
-    7: "Perimeter Oriented, Pull-up Shooting Engine",
-    8: "Midrange + Paint Oriented Engine",
-    9: "3PT-Reliant Sharpshooter",
-}
+CLUSTER_NAME_BY_NUMBER = dict(EUCLIDEAN_KMEANS_CLUSTER_NAME_BY_NUMBER)
 
 
 class ClusterRequest(BaseModel):
@@ -785,7 +972,7 @@ class PlayerComparisonRequest(BaseModel):
     mode: str = "raw_stats"
 
 
-app = FastAPI(title="NBA Guard Cluster Explorer API")
+app = FastAPI(title="NBA Player Cluster Explorer API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -2060,7 +2247,7 @@ def load_player_comps_percentile_source() -> Optional[Dict[str, object]]:
     if not required_columns.issubset(set(source.columns)):
         return None
 
-    eligible = source[source["position"].isin(["PG", "SG"])].copy()
+    eligible = source.copy()
     excluded_names = {normalize_player_name_for_percentile_pool(name) for name in PERCENTILE_AND_BADGE_EXCLUDED_NAMES}
     eligible = eligible[~eligible["Player Name"].map(normalize_player_name_for_percentile_pool).isin(excluded_names)].copy()
     if eligible.empty:
@@ -2142,7 +2329,7 @@ def build_player_comps_feature_percentile_items(player_key: str, player_meta: Di
 
 
 def attach_badge_rarity_columns(badge_frame: pd.DataFrame, guards: Optional[pd.DataFrame] = None) -> pd.DataFrame:
-    """Attach cumulative same-season guard rarity labels to badge rows.
+    """Attach cumulative same-season league-wide rarity labels to badge rows.
 
     Rarity is cumulative by tier: a gold badge counts as gold, silver, and bronze
     for the same badge skill. Therefore bronze rarity is the most common, silver
@@ -2155,7 +2342,7 @@ def attach_badge_rarity_columns(badge_frame: pd.DataFrame, guards: Optional[pd.D
     excluded_names = {normalize_player_name_for_percentile_pool(name) for name in PERCENTILE_AND_BADGE_EXCLUDED_NAMES}
 
     if guards is not None and not guards.empty and {"Season", "Player Name", "position"}.issubset(set(guards.columns)):
-        eligible = guards[guards["position"].isin(["PG", "SG"])].copy()
+        eligible = guards.copy()
         eligible = eligible[~eligible["Player Name"].map(normalize_player_name_for_percentile_pool).isin(excluded_names)]
         if "player_key" not in eligible.columns:
             try:
@@ -2193,7 +2380,7 @@ def attach_badge_rarity_columns(badge_frame: pd.DataFrame, guards: Optional[pd.D
         cumulative_count = float(len(badge_players_by_season_skill_tier.get((season_value, badge_id, tier), set())))
         rarity_percent = (cumulative_count / denominator * 100.0) if denominator > 0 else 0.0
         rarity_values.append(rarity_percent)
-        rarity_labels.append(f"{rarity_percent:.2f}% of {season} guards" if season else f"{rarity_percent:.2f}% of guards")
+        rarity_labels.append(f"{rarity_percent:.2f}% of {season} players" if season else f"{rarity_percent:.2f}% of players")
 
     output["rarity_percent"] = rarity_values
     output["rarity_label"] = rarity_labels
@@ -2243,9 +2430,10 @@ def load_base_dataframe(dataset_path: str) -> Dict:
     df = df[df["_remove_flag"] != 1].drop(columns=["_remove_flag"]).copy()
     df = add_locked_similarity_derived_features(df)
 
-    guards = df[df["position"].isin(["PG", "SG"])].copy()
-    if guards.empty:
-        raise ValueError("No guards found with position equal to PG or SG.")
+    players = df.copy()
+    if players.empty:
+        raise ValueError("No player-seasons found in the dataset.")
+    guards = players
 
     guards["player_key"] = guards.apply(stable_player_key, axis=1)
 
@@ -2535,11 +2723,28 @@ def build_cache_key(
         "pca_target": PCA_EXPLAINED_VAR_TARGET,
         "euclidean_kmeans_locked_k": EUCLIDEAN_KMEANS_LOCKED_K,
         "euclidean_kmeans_locked_assignments_path": str(EUCLIDEAN_KMEANS_LOCKED_ASSIGNMENTS_PATH),
+        # The assignments file's contents decide the archetypes, so its mtime has
+        # to be part of the key. Without it a re-clustering keeps serving the old
+        # cached labels under the new cluster names.
+        "euclidean_kmeans_locked_assignments_mtime_ns": (
+            EUCLIDEAN_KMEANS_LOCKED_ASSIGNMENTS_PATH.stat().st_mtime_ns
+            if EUCLIDEAN_KMEANS_LOCKED_ASSIGNMENTS_PATH.exists()
+            else 0
+        ),
         "euclidean_kmeans_locked_group_features": EUCLIDEAN_KMEANS_LOCKED_GROUP_FEATURES,
         "euclidean_kmeans_locked_group_weights": EUCLIDEAN_KMEANS_LOCKED_GROUP_WEIGHTS,
         "euclidean_kmeans_locked_group_order": EUCLIDEAN_KMEANS_LOCKED_GROUP_ORDER,
         "euclidean_kmeans_locked_pipeline": EUCLIDEAN_KMEANS_LOCKED_PIPELINE,
         "euclidean_kmeans_locked_similarity_distance_metric": EUCLIDEAN_KMEANS_LOCKED_SIMILARITY_DISTANCE_METRIC,
+        # Similar-player edges are read from the v4 asset, so its contents belong in
+        # the key -- otherwise a re-run of the similarity precompute keeps serving
+        # the previously cached comparisons.
+        "similarity_v4_path": str(find_similarity_v4_path() or ""),
+        "similarity_v4_mtime_ns": (
+            find_similarity_v4_path().stat().st_mtime_ns
+            if find_similarity_v4_path() is not None
+            else 0
+        ),
         "galaxy_similar_player_count": GALAXY_SIMILAR_PLAYER_COUNT,
         "galaxy_cluster_knn_count": GALAXY_CLUSTER_KNN_COUNT,
         "galaxy_umap_n_neighbors": GALAXY_UMAP_N_NEIGHBORS,
@@ -3292,15 +3497,33 @@ def build_galaxy_payload(
         if isinstance(raw_block_slices, dict):
             block_slices = raw_block_slices
 
-    similarity_edges = build_similarity_edges_for_galaxy(
-        guards=guards,
-        labels=labels,
-        distance_matrix=distance_matrix,
-        top_n=GALAXY_SIMILAR_PLAYER_COUNT,
-        X_metric=X_metric,
-        block_slices=block_slices,
-        default_similarity_metric=similarity_distance_metric,
-    )
+    # Similar-player edges come from the v4 model when its asset is present. Only
+    # the similarity layer moves: archetypes are locked from the assignments file
+    # and constellation edges, medoids and labels still describe the clustered
+    # space, so they keep using the locked distance matrix below.
+    similarity_edges = None
+    similarity_v4_payload = load_similarity_v4_payload()
+    if similarity_v4_payload is not None:
+        similarity_edges = build_similarity_edges_from_v4(
+            guards=guards,
+            labels=labels,
+            payload=similarity_v4_payload,
+            top_n=GALAXY_SIMILAR_PLAYER_COUNT,
+        )
+    if similarity_edges is None:
+        similarity_edges = build_similarity_edges_for_galaxy(
+            guards=guards,
+            labels=labels,
+            distance_matrix=distance_matrix,
+            top_n=GALAXY_SIMILAR_PLAYER_COUNT,
+            X_metric=X_metric,
+            block_slices=block_slices,
+            default_similarity_metric=similarity_distance_metric,
+        )
+        similarity_model = "locked_block_weighted"
+    else:
+        similarity_model = "v4_personalized"
+
     cluster_edges = build_cluster_constellation_edges_for_galaxy(
         guards=guards,
         labels=labels,
@@ -3315,6 +3538,7 @@ def build_galaxy_payload(
             else "active_metric_space"
         ),
         "similarity_distance_metric": similarity_distance_metric,
+        "similarity_model": similarity_model,
         "display_space": display_meta,
         "similar_player_count": int(GALAXY_SIMILAR_PLAYER_COUNT),
         "same_cluster_knn_count": int(GALAXY_CLUSTER_KNN_COUNT),
@@ -3881,7 +4105,7 @@ def build_named_breakdown_payload(
             "scores": component_median_scores(cluster_mask),
         },
         "guard_median": {
-            "label": f"Median Guard {player_season}",
+            "label": f"Median Player {player_season}",
             "season": player_season,
             "scores": component_median_scores(guards["Season"].astype(str).eq(player_season).to_numpy()),
         },
@@ -3962,7 +4186,7 @@ def build_new_percentile_breakdown_payload(dataset_path: str, algorithm: str, di
         "score_logic": score_logic,
         "player": {"label": player_name, "player_name": player_name, "season": str(player_row["Season"]), "team": str(player_row["teams_played"]), "position": str(player_row["position"]), **get_player_headshot_payload(player_name), "scores": component_scores_for_row(player_index), "subsections": subsection_scores_for_row(player_index)},
         "cluster_median": {"label": f"{cluster_title} Median", "cluster_number": player_cluster_number, "cluster_title": cluster_title, "scores": component_median_scores(cluster_mask), "subsections": subsection_median_scores(cluster_mask)},
-        "guard_median": {"label": f"Median Guard {player_season}", "season": player_season, "scores": component_median_scores(season_guard_mask), "subsections": subsection_median_scores(season_guard_mask)},
+        "guard_median": {"label": f"Median Player {player_season}", "season": player_season, "scores": component_median_scores(season_guard_mask), "subsections": subsection_median_scores(season_guard_mask)},
     }
 
 def load_precomputed_breakdown_file(breakdown_kind: str) -> Optional[Dict[str, object]]:
@@ -4087,6 +4311,96 @@ def build_three_pt_breakdown_payload(dataset_path: str, algorithm: str, distance
 
     raise ValueError(f"No precomputed three_pt_breakdown payload found for player_key: {player_key}")
 
+def build_similar_players_response_v4(
+    source_point: Dict[str, object],
+    source_key: str,
+    entry: Dict[str, object],
+    payload: Dict[str, object],
+    point_by_key: Dict[str, Dict[str, object]],
+) -> Dict[str, object]:
+    """Similar-players response backed by the v4 model.
+
+    ``similar_players`` stays the OVERALL ranking so existing callers are
+    unaffected; ``comps`` carries all three rankings and ``attention`` carries
+    the paper's skill tables for the queried player.
+    """
+    comps = entry.get("comps", {})
+    if not isinstance(comps, dict):
+        comps = {}
+
+    def build_domain(domain: str) -> List[Dict[str, object]]:
+        items: List[Dict[str, object]] = []
+        for rank, record in enumerate(comps.get(domain, []) or [], start=1):
+            comp = expand_similarity_v4_comp(record, payload, rank)
+            target_point = point_by_key.get(comp["player_key"])
+            if target_point is None:
+                continue
+            cluster_number = int(target_point.get("cluster", 0) or 0)
+            cluster_name = get_cluster_title(cluster_number, "kmeans", "euclidean")
+            items.append({
+                "rank": comp["rank"],
+                "player_name": str(target_point.get("player_name", "")),
+                "season": str(target_point.get("season", "")),
+                "team": str(target_point.get("teams_played", "")),
+                "position": str(target_point.get("position", "")),
+                "player_season_id": comp["player_key"],
+                "cluster_raw": cluster_number - 1,
+                "cluster_number": cluster_number,
+                "cluster_name": cluster_name,
+                "archetype_name": cluster_name,
+                **get_player_headshot_payload(target_point.get("player_name", "")),
+                "similarity_score": comp["overall_similarity"],
+                "overall_distance": comp["overall_distance"],
+                "off_similarity": comp["off_similarity"],
+                "def_similarity": comp["def_similarity"],
+                "overall_similarity": comp["overall_similarity"],
+                "off_distance": comp["off_distance"],
+                "def_distance": comp["def_distance"],
+                "similarity_distance_metric": "v4_personalized",
+                "similarity_metric_used": "v4_personalized",
+                "same_cluster": bool(cluster_number == int(source_point.get("cluster", 0) or 0)),
+                "same_archetype": bool(cluster_number == int(source_point.get("cluster", 0) or 0)),
+                "most_alike_blocks": comp["most_alike_blocks"],
+                "most_different_blocks": comp["most_different_blocks"],
+                "strongest_similarity_blocks": ", ".join(comp["most_alike_blocks"]),
+                "biggest_difference_blocks": ", ".join(comp["most_different_blocks"]),
+                "block_scores": {},
+            })
+        return items
+
+    by_domain = {domain: build_domain(domain) for domain in SIMILARITY_V4_DOMAINS}
+    source_cluster_number = int(source_point.get("cluster", 0) or 0)
+    source_cluster_name = get_cluster_title(source_cluster_number, "kmeans", "euclidean")
+    meta = payload.get("meta", {})
+    return {
+        "source_file": "similarity_v4",
+        "similarity_model": "v4_personalized",
+        "similarity_model_meta": {
+            "engine": meta.get("engine", ""),
+            "paper": meta.get("paper", ""),
+            "blocks": meta.get("blocks", 0),
+            "subgroups": meta.get("subgroups", 0),
+            "fitting_population": meta.get("fitting_population", 0),
+            "candidate_pool": meta.get("candidate_pool", 0),
+            "similarity_transform": meta.get("similarity_transform", ""),
+        },
+        "player_name": str(source_point.get("player_name", "")),
+        "season": str(source_point.get("season", "")),
+        "team": str(source_point.get("teams_played", "")),
+        "position": str(source_point.get("position", "")),
+        "player_season_id": source_key,
+        "cluster_raw": source_cluster_number - 1,
+        "cluster_number": source_cluster_number,
+        "cluster": source_cluster_name,
+        "cluster_name": source_cluster_name,
+        "archetype_name": source_cluster_name,
+        **get_player_headshot_payload(source_point.get("player_name", "")),
+        "attention": build_similarity_v4_attention(entry, payload),
+        "comps": by_domain,
+        "similar_players": by_domain["overall"],
+    }
+
+
 def build_similar_players_response_from_galaxy(player_name: str, season: str) -> Dict[str, object]:
     runtime = prepare_cluster_runtime(
         DEFAULT_DATASET_PATH,
@@ -4119,6 +4433,48 @@ def build_similar_players_response_from_galaxy(player_name: str, season: str) ->
         raise HTTPException(status_code=404, detail=f"No similar players found for {player_name} {season}.")
 
     source_key = str(source_point.get("player_key"))
+
+    # v4 path: three ranked lists plus the model's attention profile.
+    similarity_v4_payload = load_similarity_v4_payload()
+    v4_entry = None
+    if similarity_v4_payload is not None:
+        v4_entry = similarity_v4_payload.get("players", {}).get(source_key)
+    if v4_entry is not None:
+        return build_similar_players_response_v4(
+            source_point=source_point,
+            source_key=source_key,
+            entry=v4_entry,
+            payload=similarity_v4_payload,
+            point_by_key=point_by_key,
+        )
+    if similarity_v4_payload is not None:
+        # In the galaxy but absent from the similarity model's source data. Say so
+        # rather than falling through to a legacy path that has no edges either.
+        source_cluster_number = int(source_point.get("cluster", 0) or 0)
+        source_cluster_name = get_cluster_title(source_cluster_number, "kmeans", "euclidean")
+        return {
+            "source_file": "similarity_v4",
+            "similarity_model": "v4_personalized",
+            "unavailable_reason": (
+                "This player-season is not in the similarity model's feature source, "
+                "so no comparisons can be computed for it."
+            ),
+            "player_name": str(source_point.get("player_name", "")),
+            "season": str(source_point.get("season", "")),
+            "team": str(source_point.get("teams_played", "")),
+            "position": str(source_point.get("position", "")),
+            "player_season_id": source_key,
+            "cluster_raw": source_cluster_number - 1,
+            "cluster_number": source_cluster_number,
+            "cluster": source_cluster_name,
+            "cluster_name": source_cluster_name,
+            "archetype_name": source_cluster_name,
+            **get_player_headshot_payload(source_point.get("player_name", "")),
+            "attention": None,
+            "comps": {domain: [] for domain in SIMILARITY_V4_DOMAINS},
+            "similar_players": [],
+        }
+
     similarity_edges = payload.get("galaxy", {}).get("similarity_edges", [])
     source_edges = sorted(
         [edge for edge in similarity_edges if str(edge.get("source")) == source_key],
@@ -4362,12 +4718,7 @@ def load_player_comps_dataframe() -> tuple[pd.DataFrame, Dict[str, str], Path]:
     if "position" not in normalized_df.columns:
         normalized_df["position"] = ""
 
-    if "position" in normalized_df.columns:
-        position_values = normalized_df["position"].astype(str).str.upper().str.strip()
-        guard_mask = position_values.isin(["PG", "SG"])
-        if guard_mask.any():
-            normalized_df = normalized_df.loc[guard_mask].copy()
-
+    # No position filter: player comparison covers every player in the model.
     normalized_df["Player Name"] = normalized_df["Player Name"].astype(str)
     normalized_df["Season"] = normalized_df["Season"].astype(str)
     normalized_df["teams_played"] = normalized_df["teams_played"].fillna("").astype(str)
@@ -4875,6 +5226,11 @@ def similar_players(
     k: Optional[int] = None,
     pca_variance_target: Optional[str] = None,
 ):
+    # The v4 model is the site's similarity engine when its asset is present.
+    # The legacy CSV path below stays as a fallback for older exports.
+    if load_similarity_v4_payload() is not None:
+        return build_similar_players_response_from_galaxy(player_name=player_name, season=season)
+
     try:
         dataframe, csv_path = load_similar_players_dataframe()
     except FileNotFoundError:

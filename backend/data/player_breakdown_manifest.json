@@ -1,16 +1,16 @@
 {
-  "created_at": "2026-05-13T14:18:37.841799+00:00",
+  "created_at": "2026-09-05T21:51:13.719050+00:00",
   "dataset_path": "/Users/harsha/nbagalaxy/backend/data/fullseasonfeatures_16_17_25_26.csv",
   "dataset_mtime_ns": 1778632967253195049,
   "dlebron_dataset_path": "/Users/harsha/nbagalaxy/backend/data/fullseasonfeatures_player_comps_real.csv",
   "dlebron_dataset_mtime_ns": 1778418839745992315,
   "algorithm": "kmeans",
   "distance_metric": "euclidean",
-  "k": 12,
-  "feature_signature": "b80464e6f59a39e280d0fd4196aa4262f65338827f04bce45fdcd180bd58194e",
+  "k": 16,
+  "feature_signature": "327f0ad530b20c48aa9c90fdf4e8264c4b3c56f4bbae8f1c9e9b8107000a897f",
   "files": {
     "skill_breakdown": "/Users/harsha/nbagalaxy/backend/data/player_skill_breakdowns.json",
     "three_pt_breakdown": "/Users/harsha/nbagalaxy/backend/data/player_three_pt_breakdowns.json"
   },
-  "player_count": 1405
+  "player_count": 3212
 }

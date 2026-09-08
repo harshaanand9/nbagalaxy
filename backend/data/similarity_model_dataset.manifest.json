@@ -1,0 +1,37 @@
+{
+  "source": "/Users/harsha/Desktop/testing_galaxy/bballindex_complete_dataset_with_pbp_midrange.csv",
+  "impact_sources": [
+    "/Users/harsha/Desktop/PickPocketProjectOfficial/bballindex_full_features.csv",
+    "/Users/harsha/Desktop/PickPocketProjectOfficial/bballindex_missing_players_scraped_backup_before_shot_location_features_20260609_165132.csv"
+  ],
+  "rows": 4162,
+  "columns": 282,
+  "site_roster_matched": 3206,
+  "site_roster_total": 3212,
+  "unmatched_site_player_seasons": [
+    [
+      "frankjackson",
+      "2018-19"
+    ],
+    [
+      "frankjackson",
+      "2020-21"
+    ],
+    [
+      "frankjackson",
+      "2021-22"
+    ],
+    [
+      "jevoncarter",
+      "2025-26"
+    ],
+    [
+      "johnnydavis",
+      "2022-23"
+    ],
+    [
+      "terrencejones",
+      "2016-17"
+    ]
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Deployed sig:', d['metric_meta']['euclidean_kmeans_locked_feature_signature'][:16]+'...'\\); edges=[e for e in d['galaxy']['similarity_edges'] if 'Reed Sheppard' in e.get\\('source_player_name',''\\) and '2025-26' in e.get\\('source_season',''\\)]; [print\\(f'  #{e[\\\\\"rank\\\\\"]} {e[\\\\\"target_player_name\\\\\"]} {e[\\\\\"target_season\\\\\"]}'\\) for e in sorted\\(edges,key=lambda x:x['rank']\\)]\")",
+      "Bash(ls -lh \"/Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_13_14_25_26_pullup.csv\")",
+      "Read(//Users/harsha/Desktop/PickPocketProjectOfficial/**)",
+      "Bash(cp \"/Users/harsha/Desktop/PickPocketProjectOfficial/fullseasonfeatures_13_14_25_26_pullup.csv\" backend/data/fullseasonfeatures_13_14_25_26_pullup.csv)",
+      "Bash(python3 -c \"import pandas as pd; df = pd.read_csv\\('/Users/harsha/Desktop/nbagalaxy_publish/backend/data/fullseasonfeatures_16_17_25_26.csv'\\); print\\(list\\(df.columns\\)\\)\")"
+    ],
+    "additionalDirectories": [
+      "/Users/harsha/Desktop/PickPocketProjectOfficial"
+    ]
+  }
+}

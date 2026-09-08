@@ -12,10 +12,11 @@ BADGE_TIER_RANK = {tier: index for index, tier in enumerate(BADGE_TIER_ORDER)}
 BADGE_CATEGORY_ORDER = {
     "three_pt": 0,
     "midrange": 1,
-    "rim_pressure": 2,
-    "scoring": 3,
-    "playmaking": 4,
-    "defense": 5,
+    "interior": 2,
+    "rim_pressure": 3,
+    "scoring": 4,
+    "playmaking": 5,
+    "defense": 6,
 }
 
 BADGE_REQUIRED_FEATURES = [
@@ -66,6 +67,17 @@ BADGE_REQUIRED_FEATURES = [
     "potential_assist_frequency",
     "potential_assist_tov_ratio",
     "assists_tov_ratio",
+    # Interior scoring, rim protection and screening. None of these were needed
+    # while the site was guards-only; they carry the badges that forwards and
+    # centers actually earn.
+    "RestrictedArea_Frequency",
+    "RestrictedArea_Accuracy",
+    "Paint_Non_RA_Frequency",
+    "Paint_Non_RA_Accuracy",
+    "cut_frequency",
+    "cut_ppp",
+    "contested_shot_frequency",
+    "screen_assist_points_per_game",
 ]
 
 BADGE_LOWER_IS_BETTER_FEATURES = {
@@ -75,23 +87,17 @@ BADGE_LOWER_IS_BETTER_FEATURES = {
     "opp_players_fg_pct_difference",
 }
 
-PERCENTILE_AND_BADGE_EXCLUDED_NAMES = {
-    "lebron james",
-    "scottie barnes",
-    "ben simmons",
-}
-
-DEFENSIVE_LOCKDOWN_EXCLUDED_NAMES = {
-    "james harden",
-    "damian lillard",
-    "stephen curry",
-    "seth curry",
-    "luka doncic",
-}
-
-DEFENSIVE_LOCKDOWN_ALWAYS_DIAMOND_NAMES = {
-    "amen thompson",
-}
+# Badges are computed for every player-season, and every percentile is taken
+# against every other player-season in the same season regardless of position.
+#
+# The by-name exclusion lists that used to live here existed only because the
+# pool was guards: LeBron, Simmons and Barnes were forwards being ranked against
+# guards, and Harden / Lillard / Curry / Doncic scored as "lockdown" defenders
+# because a guard-only pool contained no rim protection to compare them
+# against. A league-wide pool removes both problems at the source, so the manual
+# overrides are gone. Eligibility is decided by opportunity gates on the badges
+# themselves, never by a player's name.
+PERCENTILE_AND_BADGE_EXCLUDED_NAMES: set = set()
 
 BADGE_DEFINITIONS = {
     "deep_range_bomber": {"name": "Deep Range Bomber", "category": "three_pt"},
@@ -107,6 +113,13 @@ BADGE_DEFINITIONS = {
     "free_throw_generator": {"name": "Free Throw Generator", "category": "rim_pressure"},
     "drive_and_kicker": {"name": "Drive and Kicker", "category": "playmaking"},
     "inside_the_arc_scorer": {"name": "Inside-The-Arc Scorer", "category": "rim_pressure"},
+    "rim_finisher": {"name": "Rim Finisher", "category": "interior"},
+    "paint_craftsman": {"name": "Paint Craftsman", "category": "interior"},
+    "cut_finisher": {"name": "Lob and Cut Finisher", "category": "interior"},
+    "inside_out_threat": {"name": "Inside-Out Threat", "category": "three_pt"},
+    "screen_assist_machine": {"name": "Screen Assist Machine", "category": "playmaking"},
+    "rim_protector": {"name": "Rim Protector", "category": "defense"},
+    "perimeter_stopper": {"name": "Perimeter Stopper", "category": "defense"},
     "walking_bucket": {"name": "Walking Bucket", "category": "scoring"},
     "dunker": {"name": "Dunker", "category": "rim_pressure"},
     "active_hands": {"name": "Active Hands", "category": "defense"},
@@ -232,6 +245,63 @@ def tier_from_score(score: float, diamond: float, gold: float, silver: float, br
     return None
 
 
+
+# ---------------------------------------------------------------------------
+# Tier thresholds
+#
+# A badge score is already a same-season percentile taken against ALL player
+# seasons, so a threshold is directly a rarity statement. These numbers are not
+# hand-picked: they are solved so every badge lands on about the same share of
+# the league, which stops a badge from becoming ordinary just because the skill
+# underneath it is common.
+#
+#   diamond  ~0.6% of the league     gold    ~2.4% (cumulative)
+#   silver   ~6%   (cumulative)      bronze  ~12%  (cumulative)
+#
+# Bronze is therefore "great at this", diamond is "the best in the league at
+# this". Players with no elite or near-elite skill earn no badges, which is the
+# intended behaviour rather than a gap to be filled.
+#
+# When a badge's opportunity gate is tighter than the 12% target, the gate is
+# doing the work and everyone who clears it earns at least bronze.
+# Re-solve with scripts/calibrate_badge_thresholds.py after a data refresh.
+# ---------------------------------------------------------------------------
+BADGE_TIER_THRESHOLDS = {
+    "deep_range_bomber": (95.3, 89.7, 80.6, 50.2),
+    "catch_and_shoot_converter": (93.0, 88.0, 80.4, 69.3),
+    "contested_3pt_maker": (95.7, 93.0, 88.5, 81.8),
+    "pull_up_3pt_machine": (94.7, 89.6, 83.1, 69.3),
+    "volume_3pt_shooter": (99.2, 96.8, 93.0, 86.0),
+    "three_pt_sniper": (95.6, 91.7, 86.1, 78.0),
+    "volume_mid_range_shooter": (99.4, 97.5, 93.9, 87.6),
+    "mid_range_assassin": (99.4, 97.1, 93.3, 86.3),
+    "volume_slasher": (99.4, 97.6, 93.7, 87.5),
+    "efficient_driver": (99.4, 97.0, 93.1, 87.0),
+    "free_throw_generator": (99.4, 97.4, 93.7, 87.0),
+    "drive_and_kicker": (98.7, 96.3, 92.3, 86.3),
+    "inside_the_arc_scorer": (97.2, 93.5, 88.1, 80.5),
+    "rim_finisher": (98.5, 95.8, 91.4, 82.4),
+    "paint_craftsman": (95.5, 90.1, 82.5, 71.4),
+    "cut_finisher": (98.3, 95.1, 90.5, 82.8),
+    "inside_out_threat": (86.7, 75.3, 65.6, 55.0),
+    "screen_assist_machine": (99.7, 97.7, 94.1, 88.1),
+    "rim_protector": (98.1, 95.4, 91.0, 85.2),
+    "perimeter_stopper": (95.0, 88.1, 78.1, 65.4),
+    "walking_bucket": (99.4, 97.6, 94.0, 88.0),
+    "dunker": (99.7, 97.7, 94.1, 88.1),
+    "active_hands": (99.1, 96.7, 92.6, 86.0),
+    "defensive_lock_down": (96.4, 92.4, 87.4, 80.9),
+    "assist_generator": (99.5, 97.7, 94.1, 88.1),
+    "efficient_passer": (96.2, 89.8, 82.3, 73.3),
+}
+
+
+def tier_for(badge_id: str, score: float) -> Optional[str]:
+    """Tier a badge score against that badge's calibrated thresholds."""
+    diamond, gold, silver, bronze = BADGE_TIER_THRESHOLDS[badge_id]
+    return tier_from_score(score, diamond, gold, silver, bronze)
+
+
 def demote_tier(tier: Optional[str], steps: int = 1) -> Optional[str]:
     if tier is None:
         return None
@@ -323,8 +393,19 @@ def _season_zscore_sum_percentile(dataframe: pd.DataFrame, numeric_frame: pd.Dat
     return compute_feature_percentile_by_season(zsum, dataframe["Season"], lower_is_better=False, peer_mask=peer_mask)
 
 
+# Overall defensive activity still counts blocks: Defensive Lock-Down rewards
+# defensive value wherever it comes from.
 DEFENSIVE_LOCKDOWN_ACTIVITY_FEATURES = [
     "Blocks_per_75",
+    "Steals_per_75",
+    "Deflections_per_75",
+    "off_fouls_drawn_frequency",
+]
+
+# Active Hands is the perimeter-disruption badge and deliberately excludes
+# blocks, which are Rim Protector territory. Splitting them this way stops one
+# league-wide percentile pool from collapsing every defensive badge onto centers.
+ACTIVE_HANDS_FEATURES = [
     "Steals_per_75",
     "Deflections_per_75",
     "off_fouls_drawn_frequency",
@@ -425,6 +506,10 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
             if badge is not None:
                 row_badges.append(badge)
 
+        # Shot-contest volume is the behavioural test for "does this player
+        # defend the interior". Three badges gate on it, so it is computed once.
+        contested_pct = _pct(percentile_frame, row_index, "contested_shot_frequency")
+
         # Deep Range Bomber
         local_3p_accuracy_deep = compute_local_percentile(
             dataframe, numeric_frame, percentile_frame, row_index,
@@ -438,7 +523,7 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
         score = median_score(list(components.values()))
         tier = None
         if components["Avg3ptShotDistance"] >= 80.0 and components["3fga_frequency"] >= 50.0:
-            tier = tier_from_score(score, 95.0, 90.0, 85.0, 80.0)
+            tier = tier_for("deep_range_bomber", score)
             if tier == "diamond" and components["Avg3ptShotDistance"] < 95.0:
                 tier = "gold"
             demotions = []
@@ -458,7 +543,7 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
         }
         score = median_score(list(components.values()))
         if components["catch_shoot_3P_frequency"] >= 80.0:
-            tier = tier_from_score(score, 90.0, 85.0, 80.0, 75.0)
+            tier = tier_for("catch_and_shoot_converter", score)
             demotions = []
             if local_catch_accuracy < 50.0:
                 tier = demote_tier(tier)
@@ -479,7 +564,7 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
         }
         score = median_score(list(components.values()))
         if components["avg_closest_defender_3FGA_lower_is_better"] >= 75.0 and _pct(percentile_frame, row_index, "3fga_frequency") >= 50.0:
-            tier = tier_from_score(score, 95.0, 90.0, 82.0, 75.0)
+            tier = tier_for("contested_3pt_maker", score)
             demotions = []
             if any(_below_average(value) for value in components.values()):
                 tier = demote_tier(tier)
@@ -501,7 +586,7 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
         }
         score = median_score(list(components.values()))
         if components["pull_up_3P_frequency"] >= 75.0:
-            tier = tier_from_score(score, 95.0, 87.0, 82.0, 75.0)
+            tier = tier_for("pull_up_3pt_machine", score)
             if components["pull_up_3P_frequency"] >= 95.0:
                 if local_pullup_accuracy >= 75.0:
                     tier = "diamond"
@@ -524,7 +609,7 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
         }
         score = median_score(list(components.values()))
         if components["3fga_frequency"] >= 75.0:
-            tier = tier_from_score(score, 95.0, 87.0, 82.0, 75.0)
+            tier = tier_for("volume_3pt_shooter", score)
             demotions = []
             if any(_below_average(value) for value in components.values()):
                 tier = demote_tier(tier)
@@ -541,8 +626,8 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
             "3fga_frequency": _pct(percentile_frame, row_index, "3fga_frequency"),
         }
         score = (0.70 * components["3P_Accuracy_local_by_closest_defender_floor_to_100"]) + (0.30 * components["3fga_frequency"])
-        if _pct(percentile_frame, row_index, "3P_Accuracy") >= 50.0:
-            tier = tier_from_score(score, 93.0, 85.0, 75.0, 65.0)
+        if _pct(percentile_frame, row_index, "3P_Accuracy") >= 60.0 and components["3fga_frequency"] >= 60.0:
+            tier = tier_for("three_pt_sniper", score)
             append_badge(build_badge_payload("three_pt_sniper", tier, score, components))
 
         # Volume Mid-Range Shooter
@@ -552,7 +637,7 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
         }
         score = median_score(list(components.values()))
         if components["MidRangeFrequency"] >= 75.0:
-            tier = tier_from_score(score, 95.0, 87.0, 82.0, 75.0)
+            tier = tier_for("volume_mid_range_shooter", score)
             demotions = []
             if any(_below_average(value) for value in components.values()):
                 tier = demote_tier(tier)
@@ -572,7 +657,7 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
         }
         score = median_score(list(components.values()))
         if components["MidRangeFrequency"] >= 75.0:
-            tier = tier_from_score(score, 95.0, 87.0, 80.0, 75.0)
+            tier = tier_for("mid_range_assassin", score)
             demotions = []
             if local_mid_accuracy < 50.0:
                 tier = demote_tier(tier)
@@ -587,7 +672,7 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
         }
         score = median_score(list(components.values()))
         if components["pts_from_drives_per_75"] >= 75.0:
-            tier = tier_from_score(score, 97.0, 92.0, 87.0, 75.0)
+            tier = tier_for("volume_slasher", score)
             demotions = []
             if components["pts_from_drives_per_75"] < 50.0 or components["drives_drive_fga"] < 50.0:
                 tier = demote_tier(tier)
@@ -605,8 +690,8 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
             "pts_from_drives_per_75": _pct(percentile_frame, row_index, "pts_from_drives_per_75"),
         }
         score = median_score(list(components.values()))
-        if components["pts_from_drives_per_75"] >= 50.0:
-            tier = tier_from_score(score, 97.0, 92.0, 83.0, 75.0)
+        if components["pts_from_drives_per_75"] >= 65.0:
+            tier = tier_for("efficient_driver", score)
             demotions = []
             if components["drive_fga_frequency"] < 50.0 or local_drive_fg < 50.0:
                 tier = demote_tier(tier)
@@ -620,8 +705,8 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
             "fta_per_75": _pct(percentile_frame, row_index, "fta_per_75"),
         }
         score = median_score(list(components.values()))
-        if components["fta_rate"] >= 50.0:
-            tier = tier_from_score(score, 97.0, 92.0, 83.0, 75.0)
+        if components["fta_rate"] >= 65.0:
+            tier = tier_for("free_throw_generator", score)
             demotions = []
             if components["fta_per_75"] < 50.0:
                 tier = demote_tier(tier)
@@ -643,8 +728,8 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
             "drives_drives": _pct(percentile_frame, row_index, "drives_drives"),
         }
         score = median_score(list(components.values()))
-        if drive_ast_pct >= 50.0:
-            tier = tier_from_score(score, 97.0, 92.0, 85.0, 75.0)
+        if drive_ast_pct >= 65.0:
+            tier = tier_for("drive_and_kicker", score)
             demotions = []
             if drive_ast_pct < 50.0 or (local_drive_tov < 50.0 and not (drive_ast_pct >= 97.0 and local_drive_tov >= 25.0)):
                 tier = demote_tier(tier)
@@ -665,9 +750,100 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
             "pts_from_drives_per_75": _pct(percentile_frame, row_index, "pts_from_drives_per_75"),
         }
         score = median_score(list(components.values()))
-        if components["drive_fga_frequency"] >= 50.0 and components["MidRangeFrequency"] >= 50.0:
-            tier = tier_from_score(score, 93.0, 87.0, 80.0, 75.0)
+        if components["drive_fga_frequency"] >= 60.0 and components["MidRangeFrequency"] >= 60.0:
+            tier = tier_for("inside_the_arc_scorer", score)
             append_badge(build_badge_payload("inside_the_arc_scorer", tier, score, components))
+
+        # Rim Finisher
+        local_ra_accuracy = compute_local_percentile(
+            dataframe, numeric_frame, percentile_frame, row_index,
+            target_feature="RestrictedArea_Accuracy", anchor_feature="RestrictedArea_Frequency",
+            mode="floor_to_100",
+        )
+        components = {
+            "RestrictedArea_Frequency": _pct(percentile_frame, row_index, "RestrictedArea_Frequency"),
+            "RestrictedArea_Accuracy_local_by_restricted_area_frequency_floor_to_100": local_ra_accuracy,
+            "dunks_per_75_poss": _pct(percentile_frame, row_index, "dunks_per_75_poss"),
+        }
+        score = median_score(list(components.values()))
+        if components["RestrictedArea_Frequency"] >= 70.0:
+            tier = tier_for("rim_finisher", score)
+            demotions = []
+            if local_ra_accuracy < 50.0:
+                tier = demote_tier(tier)
+                demotions.append("Below-average restricted-area accuracy after volume adjustment")
+            append_badge(build_badge_payload("rim_finisher", tier, score, components, demotions))
+
+        # Paint Craftsman
+        local_paint_accuracy = compute_local_percentile(
+            dataframe, numeric_frame, percentile_frame, row_index,
+            target_feature="Paint_Non_RA_Accuracy", anchor_feature="Paint_Non_RA_Frequency",
+            mode="floor_to_100",
+        )
+        components = {
+            "Paint_Non_RA_Frequency": _pct(percentile_frame, row_index, "Paint_Non_RA_Frequency"),
+            "Paint_Non_RA_Accuracy_local_by_paint_non_ra_frequency_floor_to_100": local_paint_accuracy,
+        }
+        score = median_score(list(components.values()))
+        if components["Paint_Non_RA_Frequency"] >= 70.0:
+            tier = tier_for("paint_craftsman", score)
+            demotions = []
+            if local_paint_accuracy < 50.0:
+                tier = demote_tier(tier)
+                demotions.append("Below-average non-restricted-area paint accuracy after volume adjustment")
+            append_badge(build_badge_payload("paint_craftsman", tier, score, components, demotions))
+
+        # Lob and Cut Finisher
+        local_cut_ppp = compute_local_percentile(
+            dataframe, numeric_frame, percentile_frame, row_index,
+            target_feature="cut_ppp", anchor_feature="cut_frequency", mode="floor_to_100",
+        )
+        components = {
+            "cut_frequency": _pct(percentile_frame, row_index, "cut_frequency"),
+            "cut_ppp_local_by_cut_frequency_floor_to_100": local_cut_ppp,
+            "dunks_per_75_poss": _pct(percentile_frame, row_index, "dunks_per_75_poss"),
+        }
+        score = median_score(list(components.values()))
+        if components["cut_frequency"] >= 75.0:
+            tier = tier_for("cut_finisher", score)
+            demotions = []
+            if local_cut_ppp < 50.0:
+                tier = demote_tier(tier)
+                demotions.append("Below-average cut efficiency after cut-volume adjustment")
+            append_badge(build_badge_payload("cut_finisher", tier, score, components, demotions))
+
+        # Inside-Out Threat
+        # Gated on behaviour rather than on a listed position. Attempting shots
+        # at the rim does NOT identify an interior player, because driving guards
+        # do that too; what identifies one is defending the interior. So the gate
+        # pairs the same contest-volume test Rim Protector uses with real
+        # three-point volume: a player who guards the paint and spaces the floor.
+        local_3p_accuracy_inside_out = compute_local_percentile(
+            dataframe, numeric_frame, percentile_frame, row_index,
+            target_feature="3P_Accuracy", anchor_feature="3fga_frequency", mode="floor_to_100",
+        )
+        components = {
+            "contested_shot_frequency": contested_pct,
+            "3fga_frequency": _pct(percentile_frame, row_index, "3fga_frequency"),
+            "3P_Accuracy_local_by_3fga_frequency_floor_to_100": local_3p_accuracy_inside_out,
+        }
+        score = median_score(list(components.values()))
+        if contested_pct >= 65.0 and components["3fga_frequency"] >= 55.0:
+            tier = tier_for("inside_out_threat", score)
+            demotions = []
+            if local_3p_accuracy_inside_out < 50.0:
+                tier = demote_tier(tier)
+                demotions.append("Below-average three-point accuracy after volume adjustment")
+            append_badge(build_badge_payload("inside_out_threat", tier, score, components, demotions))
+
+        # Screen Assist Machine
+        components = {
+            "screen_assist_points_per_game": _pct(percentile_frame, row_index, "screen_assist_points_per_game"),
+        }
+        score = components["screen_assist_points_per_game"]
+        if score >= 70.0:
+            tier = tier_for("screen_assist_machine", score)
+            append_badge(build_badge_payload("screen_assist_machine", tier, score, components))
 
         # Walking Bucket
         components = {
@@ -676,8 +852,8 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
             "traditional_pts": _pct(percentile_frame, row_index, "traditional_pts"),
         }
         score = median_score(list(components.values()))
-        if components["fga_per_75"] >= 50.0:
-            tier = tier_from_score(score, 95.0, 85.0, 75.0, 65.0)
+        if components["fga_per_75"] >= 65.0:
+            tier = tier_for("walking_bucket", score)
             demotions = []
             if any(_below_average(value) for value in components.values()):
                 tier = demote_tier(tier)
@@ -687,19 +863,70 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
         # Dunker
         components = {"dunks_per_75_poss": _pct(percentile_frame, row_index, "dunks_per_75_poss")}
         score = components["dunks_per_75_poss"]
-        tier = tier_from_score(score, 97.0, 92.0, 85.0, 75.0)
-        append_badge(build_badge_payload("dunker", tier, score, components))
+        if score >= 70.0:
+            tier = tier_for("dunker", score)
+            append_badge(build_badge_payload("dunker", tier, score, components))
 
         # Active Hands
         components = {
-            "Blocks_per_75": _pct(percentile_frame, row_index, "Blocks_per_75"),
-            "Steals_per_75": _pct(percentile_frame, row_index, "Steals_per_75"),
-            "Deflections_per_75": _pct(percentile_frame, row_index, "Deflections_per_75"),
-            "off_fouls_drawn_frequency": _pct(percentile_frame, row_index, "off_fouls_drawn_frequency"),
+            feature_name: _pct(percentile_frame, row_index, feature_name)
+            for feature_name in ACTIVE_HANDS_FEATURES
         }
         score = median_score(list(components.values()))
-        tier = tier_from_score(score, 95.0, 90.0, 85.0, 75.0)
+        tier = tier_for("active_hands", score)
         append_badge(build_badge_payload("active_hands", tier, score, components))
+
+        # Rim Protector
+        # Opponent FG% difference is compared only against players who contest a
+        # similar share of shots. Contesting at the rim produces a worse raw FG%
+        # difference than contesting on the perimeter simply because rim attempts
+        # go in more often, so the unadjusted feature punishes exactly the players
+        # doing the most interior work.
+        local_opp_fg_by_contest = compute_local_percentile(
+            dataframe, numeric_frame, percentile_frame, row_index,
+            target_feature="opp_players_fg_pct_difference", anchor_feature="contested_shot_frequency",
+            mode="pm_10", lower_is_better=True,
+        )
+        components = {
+            "Blocks_per_75": _pct(percentile_frame, row_index, "Blocks_per_75"),
+            "contested_shot_frequency": contested_pct,
+            "Opp_players_fga_per_75_poss": _pct(percentile_frame, row_index, "Opp_players_fga_per_75_poss"),
+            "opp_players_fg_pct_difference_local_by_contested_frequency_pm_10": local_opp_fg_by_contest,
+        }
+        score = median_score(list(components.values()))
+        if contested_pct >= 65.0:
+            tier = tier_for("rim_protector", score)
+            demotions = []
+            if components["Blocks_per_75"] < 50.0:
+                tier = demote_tier(tier)
+                demotions.append("Blocks per 75 is below average")
+            if local_opp_fg_by_contest < 40.0:
+                tier = demote_tier(tier)
+                demotions.append("Opponents shoot better than expected for this contest volume")
+            append_badge(build_badge_payload("rim_protector", tier, score, components, demotions))
+
+        # Perimeter Stopper
+        # The mirror of Rim Protector. Both gate on where a player defends, which
+        # is behaviour rather than a listed position, so the two badges partition
+        # the league by defensive role instead of by height.
+        components_opponent_volume_pct = _pct(percentile_frame, row_index, "Opp_players_fga_per_75_poss")
+        components = {
+            "Deflections_per_75": _pct(percentile_frame, row_index, "Deflections_per_75"),
+            "Steals_per_75": _pct(percentile_frame, row_index, "Steals_per_75"),
+            "opp_players_fg_pct_difference_local_by_contested_frequency_pm_10": local_opp_fg_by_contest,
+            "D-LEBRON": _pct(percentile_frame, row_index, "D-LEBRON"),
+        }
+        score = median_score(list(components.values()))
+        # Contest rate alone is not enough: a low-effort centre can slip under a
+        # contest gate. Opponent FGA per 75 is what actually separates interior
+        # from perimeter assignments, so both have to say "perimeter".
+        if contested_pct <= 55.0 and components_opponent_volume_pct <= 55.0:
+            tier = tier_for("perimeter_stopper", score)
+            demotions = []
+            if local_opp_fg_by_contest < 40.0:
+                tier = demote_tier(tier)
+                demotions.append("Opponents shoot better than expected for this contest volume")
+            append_badge(build_badge_payload("perimeter_stopper", tier, score, components, demotions))
 
         # Defensive Lock-Down
         score = float(defensive_lockdown_frame.at[row_index, "score"])
@@ -711,16 +938,15 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
             "defensive_activity_zsum_percentile": float(defensive_lockdown_frame.at[row_index, "defensive_activity_zsum_percentile"]),
         }
         defensive_metric_average_pct = components["avg_D-LEBRON_crafted_cdpm"]
-        if normalized_name in DEFENSIVE_LOCKDOWN_EXCLUDED_NAMES:
-            tier = None
-        elif normalized_name in DEFENSIVE_LOCKDOWN_ALWAYS_DIAMOND_NAMES:
-            tier = "diamond"
-        else:
-            tier = tier_from_score(score, 97.0, 92.0, 85.0, 75.0)
-            if defensive_metric_average_pct >= 98.0:
-                tier = better_tier(tier, "diamond")
-            elif defensive_metric_average_pct >= 90.0:
-                tier = better_tier(tier, "gold")
+        tier = tier_for("defensive_lock_down", score)
+        # A player whose two headline defensive-impact metrics are both elite
+        # should not be held down by the activity components, but the promotion
+        # has to be as rare as the tier it grants, or it overwrites the
+        # calibrated tiering for a tenth of the league.
+        if defensive_metric_average_pct >= 99.4:
+            tier = better_tier(tier, "diamond")
+        elif defensive_metric_average_pct >= 97.5:
+            tier = better_tier(tier, "gold")
         append_badge(build_badge_payload("defensive_lock_down", tier, score, components))
 
         # Assist Generator
@@ -729,8 +955,9 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
             "potential_assist_frequency": _pct(percentile_frame, row_index, "potential_assist_frequency"),
         }
         score = median_score(list(components.values()))
-        tier = tier_from_score(score, 97.0, 92.0, 85.0, 75.0)
-        append_badge(build_badge_payload("assist_generator", tier, score, components))
+        if components["assist_frequency"] >= 70.0:
+            tier = tier_for("assist_generator", score)
+            append_badge(build_badge_payload("assist_generator", tier, score, components))
 
         # Efficient Passer
         local_potential_ast_tov = compute_local_percentile(
@@ -748,8 +975,9 @@ def compute_badges_for_guards(guards: pd.DataFrame) -> Dict[str, List[Dict[str, 
             "assists_tov_ratio_local_by_assist_frequency_floor_to_100": local_assists_tov,
         }
         score = median_score(list(components.values()))
-        tier = tier_from_score(score, 92.0, 83.0, 75.0, 67.0)
-        append_badge(build_badge_payload("efficient_passer", tier, score, components))
+        if components["potential_assist_frequency"] >= 65.0:
+            tier = tier_for("efficient_passer", score)
+            append_badge(build_badge_payload("efficient_passer", tier, score, components))
 
         row_badges.sort(
             key=lambda badge: (

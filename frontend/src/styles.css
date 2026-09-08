@@ -6906,3 +6906,189 @@ input {
   margin-top: 4px !important;
   color: rgba(226, 249, 251, 0.88);
 }
+
+/* ---------------------------------------------------------------------------
+   v4 similarity model: domain tabs, offense/defense identity bar, attention
+   --------------------------------------------------------------------------- */
+.similarity-v4-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 14px 10px;
+}
+
+.similarity-domain-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.similarity-domain-tab {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid rgba(0, 212, 224, 0.22);
+  background: rgba(2, 9, 11, 0.55);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.similarity-domain-tab:hover {
+  color: var(--text);
+  border-color: rgba(0, 212, 224, 0.45);
+}
+
+.similarity-domain-tab.is-active {
+  background: rgba(0, 212, 224, 0.14);
+  border-color: rgba(0, 212, 224, 0.7);
+  color: var(--text);
+}
+
+.similarity-identity-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.similarity-identity-label {
+  color: var(--muted);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.similarity-identity-track {
+  flex: 1;
+  display: flex;
+  height: 16px;
+  border: 1px solid rgba(0, 212, 224, 0.18);
+  overflow: hidden;
+}
+
+.similarity-identity-off,
+.similarity-identity-def {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  overflow: hidden;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.similarity-identity-off {
+  background: rgba(0, 212, 224, 0.32);
+  color: #eafcff;
+}
+
+.similarity-identity-def {
+  background: rgba(255, 154, 60, 0.28);
+  color: #fff1e0;
+}
+
+.similarity-attention-btn {
+  border: 1px solid rgba(0, 212, 224, 0.22);
+  background: rgba(2, 9, 11, 0.55);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  padding: 5px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.similarity-attention-btn:hover {
+  color: var(--text);
+  border-color: rgba(0, 212, 224, 0.45);
+}
+
+.similarity-attention-panel {
+  border: 1px solid rgba(0, 212, 224, 0.16);
+  background: rgba(2, 9, 11, 0.45);
+  padding: 10px 12px;
+}
+
+.similarity-attention-copy {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+  margin: 0 0 10px;
+}
+
+.similarity-attention-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.similarity-attention-heading {
+  color: var(--text);
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+  opacity: 0.85;
+}
+
+.similarity-attention-row {
+  display: grid;
+  grid-template-columns: 6px minmax(0, 1fr) 46px 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.similarity-attention-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.similarity-attention-dot.is-offense {
+  background: rgba(0, 212, 224, 0.85);
+}
+
+.similarity-attention-dot.is-defense {
+  background: rgba(255, 154, 60, 0.85);
+}
+
+.similarity-attention-name {
+  color: var(--muted);
+  font-size: 8.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.similarity-attention-bar {
+  display: block;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.similarity-attention-bar > span {
+  display: block;
+  height: 100%;
+  background: rgba(0, 212, 224, 0.6);
+}
+
+.similarity-attention-row strong {
+  color: var(--text);
+  font-size: 8.5px;
+  text-align: right;
+}
+
+.similar-block-score.is-active {
+  border-color: rgba(0, 212, 224, 0.6);
+  background: rgba(0, 212, 224, 0.1);
+}
+
+@media (max-width: 720px) {
+  .similarity-attention-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -132,6 +132,11 @@ def build_similar_players_frame(galaxy_payload: Dict[str, Any]) -> pd.DataFrame:
             "same_archetype": edge.get("same_cluster", False),
             "overall_distance": edge.get("truth_distance", 0.0),
             "overall_similarity_score": edge.get("similarity_score", 0.0),
+            # v4 model only; blank on legacy exports.
+            "off_similarity_score": edge.get("off_similarity", ""),
+            "def_similarity_score": edge.get("def_similarity", ""),
+            "off_distance": edge.get("off_distance", ""),
+            "def_distance": edge.get("def_distance", ""),
             "similarity_distance_metric": edge.get("similarity_distance_metric", ""),
             "similarity_metric_used": edge.get("similarity_metric_used", ""),
             "strongest_similarity_blocks": edge.get("strongest_similarity_blocks", ""),
