@@ -1078,6 +1078,25 @@ function normalizeComparableValue(value = "") {
   return String(value ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
 }
 
+// Per-player payloads are precomputed to flat files under /precomputed and served
+// from the CDN, so opening a player never waits on the backend -- no cold start, and
+// no 404 from a backend whose dataset predates the player. Written by
+// scripts/precompute_static_player_assets.py; this slug must match its slugify().
+function playerAssetSlug(playerKey) {
+  return String(playerKey ?? "").replace(/[^A-Za-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+// Resolves to null rather than throwing, so every caller can fall through to the API.
+async function fetchStaticAsset(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 function buildSimilarPlayersUrl({ sourcePoint, clusterData, config, activeClusterCount }) {
   const params = new URLSearchParams();
   params.set("player_name", sourcePoint.player_name);
@@ -4419,20 +4438,26 @@ export default function App() {
     let cancelled = false;
     setLoadingDetail(true);
 
-    fetch(`${API_BASE}/api/player-details`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player_key: selectedPoint.player_key }),
-    })
-      .then(async (response) => {
+    fetchStaticAsset(`/precomputed/players/${playerAssetSlug(selectedPoint.player_key)}.json`)
+      .then((asset) => {
+        if (asset?.detail) return asset.detail;
+        return fetch(`${API_BASE}/api/player-details`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ player_key: selectedPoint.player_key }),
+        }).then(async (response) => {
         // Without the !response.ok guard an error body -- {"detail": "Player row
         // not found."} from a backend whose dataset predates this player -- was
         // cached and rendered as if it were a detail panel, and the missing
         // fields threw during render, blanking the whole app.
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.detail || 'Player detail request failed.');
-        }
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || 'Player detail request failed.');
+          }
+          return data;
+        });
+      })
+      .then((data) => {
         if (!cancelled) {
           playerDetailCacheRef.current.set(String(selectedPoint.player_key), data);
           setSelectedDetail(data);
@@ -4485,16 +4510,22 @@ export default function App() {
     setLoadingClusterReport(clusterDescriptionViewEnabled);
     setClusterReportError("");
 
-    fetch(`${API_BASE}/api/cluster-report`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(clusterReportRequestPayload),
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.detail || 'Cluster report request failed.');
-        }
+    fetchStaticAsset(`/precomputed/cluster_reports/${clusterReportRequestPayload.cluster_number}.json`)
+      .then((asset) => {
+        if (asset) return asset;
+        return fetch(`${API_BASE}/api/cluster-report`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(clusterReportRequestPayload),
+        }).then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || 'Cluster report request failed.');
+          }
+          return data;
+        });
+      })
+      .then((data) => {
         if (!cancelled && clusterReportRequestIdRef.current === requestId) {
           clusterReportCacheRef.current.set(clusterReportRequestKey, data);
           setSelectedClusterReport(data);
@@ -4536,17 +4567,23 @@ export default function App() {
     setLoadingSimilarPlayers(true);
     setSimilarPlayersError("");
 
-    fetch(buildSimilarPlayersUrl({
-      sourcePoint: similarPlayersSourcePoint,
-      clusterData,
-      config,
-      activeClusterCount,
-    }))
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.detail || "Similar players request failed.");
-        }
+    fetchStaticAsset(`/precomputed/comps/${playerAssetSlug(similarPlayersSourcePoint.player_key)}.json`)
+      .then((asset) => {
+        if (asset) return asset;
+        return fetch(buildSimilarPlayersUrl({
+          sourcePoint: similarPlayersSourcePoint,
+          clusterData,
+          config,
+          activeClusterCount,
+        })).then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || "Similar players request failed.");
+          }
+          return data;
+        });
+      })
+      .then((data) => {
         if (!cancelled) {
           setSimilarPlayersData(data);
         }
@@ -4581,23 +4618,29 @@ export default function App() {
     setLoadingSkillBreakdown(true);
     setSkillBreakdownError("");
 
-    fetch(`${API_BASE}/api/player-skill-breakdown`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        algorithm: clusterData?.algorithm ?? selectedAlgorithm,
-        distance_metric: clusterData?.distance_metric ?? selectedDistanceMetric,
-        k: clusterData?.k ?? activeClusterCount,
-        features: clusterData?.selected_features ?? requestFeatures,
-        player_key: selectedPoint.player_key,
-        cluster_number: selectedPoint.cluster,
-      }),
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.detail || "Skill breakdown request failed.");
-        }
+    fetchStaticAsset(`/precomputed/players/${playerAssetSlug(selectedPoint.player_key)}.json`)
+      .then((asset) => {
+        if (asset?.skill) return asset.skill;
+        return fetch(`${API_BASE}/api/player-skill-breakdown`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            algorithm: clusterData?.algorithm ?? selectedAlgorithm,
+            distance_metric: clusterData?.distance_metric ?? selectedDistanceMetric,
+            k: clusterData?.k ?? activeClusterCount,
+            features: clusterData?.selected_features ?? requestFeatures,
+            player_key: selectedPoint.player_key,
+            cluster_number: selectedPoint.cluster,
+          }),
+        }).then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || "Skill breakdown request failed.");
+          }
+          return data;
+        });
+      })
+      .then((data) => {
         if (!cancelled) {
           setSkillBreakdownData(data);
         }
@@ -4631,23 +4674,29 @@ export default function App() {
     setLoadingThreePtBreakdown(true);
     setThreePtBreakdownError("");
 
-    fetch(`${API_BASE}/api/player-three-pt-breakdown`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        algorithm: clusterData?.algorithm ?? selectedAlgorithm,
-        distance_metric: clusterData?.distance_metric ?? selectedDistanceMetric,
-        k: clusterData?.k ?? activeClusterCount,
-        features: clusterData?.selected_features ?? requestFeatures,
-        player_key: selectedPoint.player_key,
-        cluster_number: selectedPoint.cluster,
-      }),
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.detail || "3PT breakdown request failed.");
-        }
+    fetchStaticAsset(`/precomputed/players/${playerAssetSlug(selectedPoint.player_key)}.json`)
+      .then((asset) => {
+        if (asset?.three_pt) return asset.three_pt;
+        return fetch(`${API_BASE}/api/player-three-pt-breakdown`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            algorithm: clusterData?.algorithm ?? selectedAlgorithm,
+            distance_metric: clusterData?.distance_metric ?? selectedDistanceMetric,
+            k: clusterData?.k ?? activeClusterCount,
+            features: clusterData?.selected_features ?? requestFeatures,
+            player_key: selectedPoint.player_key,
+            cluster_number: selectedPoint.cluster,
+          }),
+        }).then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || "3PT breakdown request failed.");
+          }
+          return data;
+        });
+      })
+      .then((data) => {
         if (!cancelled) {
           setThreePtBreakdownData(data);
         }
@@ -4681,12 +4730,18 @@ export default function App() {
     setLoadingPlayerComparisonOptions(true);
     setPlayerComparisonOptionsError("");
 
-    fetch(`${API_BASE}/api/player-comparison-options`)
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.detail || "Player comparison options request failed.");
-        }
+    fetchStaticAsset(`/precomputed/comparison_options.json`)
+      .then((asset) => {
+        if (asset) return asset;
+        return fetch(`${API_BASE}/api/player-comparison-options`).then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || "Player comparison options request failed.");
+          }
+          return data;
+        });
+      })
+      .then((data) => {
         if (!cancelled) {
           setPlayerComparisonOptions(data);
         }

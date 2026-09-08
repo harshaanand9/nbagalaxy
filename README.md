@@ -299,6 +299,12 @@ backend/data/player_breakdown_manifest.json
 frontend/public/precomputed/default_bootstrap.json
 ```
 
+Then regenerate the per-player static assets, which read the full bootstrap:
+
+```bash
+python3 scripts/precompute_static_player_assets.py
+```
+
 Pass `--skip-headshots` and `--skip-badge-assets` to skip the two steps that need network
 access or local source images.
 
@@ -341,6 +347,33 @@ cd frontend
 npm install
 npm run dev
 ```
+
+### Static per-player assets
+
+Opening a player reads flat files from the CDN instead of calling the backend:
+
+```text
+frontend/public/precomputed/players/<slug>.json          detail + skill + 3PT
+frontend/public/precomputed/comps/<slug>.json            SIMILAR_PLAYERS
+frontend/public/precomputed/cluster_reports/<n>.json
+frontend/public/precomputed/comparison_options.json
+```
+
+`<slug>` is the player_key with runs of non-alphanumerics collapsed to `_`, so
+`Nikola Jokic||2025-26||DEN||C` becomes `Nikola_Jokic_2025_26_DEN_C`. `App.jsx` derives it
+with the same rule, so there is no index to keep in sync; the generator asserts the mapping
+is collision-free (3212 keys, 3212 slugs) before it writes.
+
+```bash
+python3 scripts/precompute_static_player_assets.py
+```
+
+Every fetch still falls back to the API when a file is missing, so an unexported player
+degrades to the old behaviour instead of breaking. Six player-seasons have no comps file
+because the v4 model has no entry for them.
+
+Pairwise `/api/player-comparison` is the one thing left on the backend -- it takes two
+players chosen at request time and cannot be enumerated ahead of it.
 
 ### The two bootstrap files
 
